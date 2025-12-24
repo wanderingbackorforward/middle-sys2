@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #0b1120;
+    color: white;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@theme {
+  --color-tech-blue: #00f0ff;
+  --color-tech-bg: #0b1120;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b1120;
+}
+::-webkit-scrollbar-thumb {
+  background: #00f0ff;
+  border-radius: 3px;
+}
+
+/* Glass effect for cards */
+.tech-card {
+  @apply bg-[#0f172a]/80 border border-[#1e293b] rounded-sm p-4 backdrop-blur-sm relative;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.tech-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #00f0ff;
+  border-left: 2px solid #00f0ff;
+}
+
+.tech-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid #00f0ff;
+  border-right: 2px solid #00f0ff;
+}
+
+.tech-text-glow {
+  text-shadow: 0 0 5px #00f0ff;
+}
