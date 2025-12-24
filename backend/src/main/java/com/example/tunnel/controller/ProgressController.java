@@ -1,5 +1,6 @@
 package com.example.tunnel.controller;
 
+import com.example.tunnel.service.ProgressService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,15 +9,21 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/progress")
 public class ProgressController {
+    private final ProgressService progressService;
+    public ProgressController(ProgressService progressService) { this.progressService = progressService; }
 
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
+        var s = progressService.getLatestStats();
+        if (s == null) {
+            return Map.of("totalRings",0,"totalGoal",0,"dailyRings",0,"remainingDays",0,"value",0);
+        }
         return Map.of(
-            "totalRings", 1245,
-            "totalGoal", 2400,
-            "dailyRings", 12,
-            "remainingDays", 145,
-            "value", 35430
+            "totalRings", s.getTotalRings(),
+            "totalGoal", s.getTotalGoal(),
+            "dailyRings", s.getDailyRings(),
+            "remainingDays", s.getRemainingDays(),
+            "value", s.getValue()
         );
     }
     
@@ -34,12 +41,8 @@ public class ProgressController {
     @GetMapping("/dailyRings")
     public List<Map<String, Object>> getDailyRings() {
         List<Map<String, Object>> series = new ArrayList<>();
-        long now = System.currentTimeMillis();
-        Random r = new Random();
-        for (int i = 14; i >= 0; i--) {
-            long ts = now - i * 24 * 3600_000L;
-            int val = 10 + r.nextInt(6);
-            series.add(Map.of("ts", new java.sql.Timestamp(ts).toInstant().toString(), "value", val));
+        for (var p : progressService.getDailyRingsRecent(14)) {
+            series.add(Map.of("ts", p.getTs().toString(), "value", p.getValue()));
         }
         return series;
     }

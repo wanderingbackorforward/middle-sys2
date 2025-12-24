@@ -1,5 +1,6 @@
 package com.example.tunnel.controller;
 
+import com.example.tunnel.service.DashboardService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,6 +9,10 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
+    private final DashboardService dashboardService;
+    public DashboardController(DashboardService dashboardService) {
+        this.dashboardService = dashboardService;
+    }
 
     @GetMapping("/summary")
     public Map<String, Object> getSummary() {
@@ -15,62 +20,66 @@ public class DashboardController {
         data.put("projectName", "江苏扬州地铁盾构隧道工程");
         data.put("lat", 32.3942);
         data.put("lng", 119.4070);
-        data.put("cameraOnline", 1018);
-        data.put("cameraTotal", 1415);
-        data.put("ringToday", 12);
-        data.put("ringCumulative", 1245);
-        data.put("muckToday", 260.5);
-        data.put("slurryPressureAvg", 0.42);
-        data.put("gasAlerts", 2);
+        var s = dashboardService.getLatestSummary();
+        if (s != null) {
+            data.put("cameraOnline", s.getCameraOnline());
+            data.put("cameraTotal", s.getCameraTotal());
+            data.put("ringToday", s.getRingToday());
+            data.put("ringCumulative", s.getRingCumulative());
+            data.put("muckToday", s.getMuckToday());
+            data.put("slurryPressureAvg", s.getSlurryPressureAvg());
+            data.put("gasAlerts", 2);
+        }
         return data;
     }
 
     @GetMapping("/notifications")
     public List<Map<String, String>> getNotifications() {
-        List<Map<String, String>> list = new ArrayList<>();
-        list.add(Map.of("time", "19:27", "type", "掘进", "content", "扬州XX区间左线完成1020环掘进"));
-        list.add(Map.of("time", "19:25", "type", "注浆", "content", "盾尾注浆压力波动，已调参稳定"));
-        list.add(Map.of("time", "19:20", "type", "设备", "content", "皮带机短时停机，检修后恢复"));
-        list.add(Map.of("time", "19:15", "type", "监测", "content", "DK12+200沉降速率接近阈值，加强观测"));
-        list.add(Map.of("time", "19:10", "type", "安全", "content", "管片搬运通道拥挤，现场已疏导"));
-        return list;
+        List<Map<String, String>> out = new ArrayList<>();
+        for (var n : dashboardService.getNotificationsRecent(20)) {
+            String time = java.time.OffsetDateTime.ofInstant(n.getTs(), java.time.ZoneOffset.UTC).toLocalTime().toString();
+            out.add(Map.of("time", time, "type", n.getType(), "content", n.getContent()));
+        }
+        return out;
     }
     
     @GetMapping("/supplies")
     public Map<String, Integer> getSupplies() {
-        return Map.of("注浆料", 4500, "水泥", 3200, "防护用品", 3500, "应急照明", 1200, "其他", 500);
+        Map<String, Integer> out = new LinkedHashMap<>();
+        for (var s : dashboardService.getSuppliesAll()) {
+            out.put(s.getCategory(), s.getQuantity());
+        }
+        return out;
     }
     
     @GetMapping("/dispatch")
     public List<Map<String, String>> getDispatch() {
-        return List.of(
-            Map.of("time", "19:27", "type", "掘进", "unit", "盾构操作班", "status", "处理中"),
-            Map.of("time", "19:15", "type", "监测", "unit", "监测项目部", "status", "待处理"),
-            Map.of("time", "18:30", "type", "设备", "unit", "机电维修组", "status", "已完成")
-        );
+        List<Map<String, String>> out = new ArrayList<>();
+        for (var d : dashboardService.getDispatchRecent(20)) {
+            String time = java.time.OffsetDateTime.ofInstant(d.getTs(), java.time.ZoneOffset.UTC).toLocalTime().toString();
+            out.add(Map.of("time", time, "type", d.getType(), "unit", d.getUnit(), "status", d.getStatus()));
+        }
+        return out;
     }
 
     @GetMapping("/timeseries")
     public Map<String, List<Map<String, Object>>> getTimeSeries() {
         Map<String, List<Map<String, Object>>> result = new HashMap<>();
-        result.put("advanceSpeed", generateSeries(24, 8.0, 2.0)); // 环/小时
-        result.put("slurryPressure", generateSeries(24, 0.42, 0.05)); // MPa
-        result.put("gasConcentration", generateSeries(24, 10.0, 6.0)); // ppm
-        return result;
-    }
-
-    private List<Map<String, Object>> generateSeries(int hours, double base, double fluct) {
-        List<Map<String, Object>> series = new ArrayList<>();
-        long now = System.currentTimeMillis();
-        Random r = new Random();
-        for (int i = hours; i >= 0; i--) {
-            long ts = now - i * 3600_000L;
-            double val = Math.max(0, base + (r.nextDouble() - 0.5) * fluct * 2);
-            Map<String, Object> point = new HashMap<>();
-            point.put("ts", new java.sql.Timestamp(ts).toInstant().toString());
-            point.put("value", Math.round(val * 100.0) / 100.0);
-            series.add(point);
+        List<Map<String, Object>> adv = new ArrayList<>();
+        for (var p : dashboardService.getAdvanceSpeedRecent(24)) {
+            adv.add(Map.of("ts", p.getTs().toString(), "value", p.getValue()));
         }
-        return series;
+        List<Map<String, Object>> sl = new ArrayList<>();
+        for (var p : dashboardService.getSlurryPressureRecent(24)) {
+            sl.add(Map.of("ts", p.getTs().toString(), "value", p.getValue()));
+        }
+        List<Map<String, Object>> gas = new ArrayList<>();
+        for (var p : dashboardService.getGasConcentrationRecent(24)) {
+            gas.add(Map.of("ts", p.getTs().toString(), "value", p.getValue()));
+        }
+        result.put("advanceSpeed", adv);
+        result.put("slurryPressure", sl);
+        result.put("gasConcentration", gas);
+        return result;
     }
 }

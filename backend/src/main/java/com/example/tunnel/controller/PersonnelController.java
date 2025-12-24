@@ -1,5 +1,6 @@
 package com.example.tunnel.controller;
 
+import com.example.tunnel.service.PersonnelService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -8,14 +9,20 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/personnel")
 public class PersonnelController {
+    private final PersonnelService personnelService;
+    public PersonnelController(PersonnelService personnelService) { this.personnelService = personnelService; }
 
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
+        var s = personnelService.getLatestStats();
+        if (s == null) {
+            return Map.of("totalOnSite", 0, "attendanceRate","0%", "violations",0, "managers",0);
+        }
         return Map.of(
-            "totalOnSite", 482,
-            "attendanceRate", "98.5%",
-            "violations", 3,
-            "managers", 45
+            "totalOnSite", s.getTotalOnSite(),
+            "attendanceRate", s.getAttendanceRate(),
+            "violations", s.getViolations(),
+            "managers", s.getManagers()
         );
     }
     
@@ -50,16 +57,8 @@ public class PersonnelController {
     @GetMapping("/attendanceTrend")
     public List<Map<String, Object>> attendanceTrend() {
         List<Map<String, Object>> series = new ArrayList<>();
-        long now = System.currentTimeMillis();
-        Random r = new Random();
-        int base = 420;
-        for (int i = 12; i >= 0; i--) {
-            long ts = now - i * 3600_000L;
-            int val = base + r.nextInt(80) - 40;
-            Map<String, Object> point = new HashMap<>();
-            point.put("ts", new java.sql.Timestamp(ts).toInstant().toString());
-            point.put("value", Math.max(300, val));
-            series.add(point);
+        for (var p : personnelService.getAttendanceTrendRecent(12)) {
+            series.add(Map.of("ts", p.getTs().toString(), "value", p.getValue()));
         }
         return series;
     }
