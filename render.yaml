@@ -12,6 +12,10 @@ services:
         value: 8080
       - key: JAVA_OPTS
         value: -Xmx512M -Xms256M
-    healthCheckPath: /actuator/health
+      - key: SUPABASE_URL
+        value: https://komlrqbghyirkykmibrx.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: ${SUPABASE_ANON_KEY}
+    healthCheckPath: /api/actuator/health
     autoDeploy: true
     branch: master
