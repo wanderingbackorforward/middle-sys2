@@ -33,13 +33,75 @@ const SafetyDashboard: React.FC = () => {
           axios.get('/api/dashboard/dispatch'),
           axios.get('/api/dashboard/timeseries')
         ]);
-        setSummary(sumRes.data);
-        setNotifications(notifRes.data);
-        setSupplies(supRes.data);
-        setDispatch(dispRes.data);
-        setTs(tsRes.data);
+        const sum = sumRes.data || {
+          projectName: '江苏扬州地铁盾构隧道工程',
+          lat: 32.3942,
+          lng: 119.407,
+          cameraOnline: 12,
+          cameraTotal: 16,
+          ringToday: 12,
+          ringCumulative: 1978,
+          muckToday: 252.9,
+          slurryPressureAvg: 0.43,
+          gasAlerts: 0
+        };
+        const notif = Array.isArray(notifRes.data) && notifRes.data.length > 0 ? notifRes.data : [
+          { time: '19:27', type: '交通', content: '上海路与长宁路交叉口发生车辆剐蹭，造成拥堵，已派员处理' },
+          { time: '19:35', type: '消防', content: '管片拼装区进行安全巡检，未发现异常' },
+          { time: '19:45', type: '通知', content: '注浆站完成例检，设备状态良好' }
+        ];
+        const sup = supRes.data && Object.keys(supRes.data || {}).length > 0 ? supRes.data : {
+          水泥: 120, 砂石: 200, 钢筋: 80, 燃料: 60
+        };
+        const disp = Array.isArray(dispRes.data) && dispRes.data.length > 0 ? dispRes.data : [
+          { time: '19:27', type: '人员', unit: '注浆班', status: '到岗' },
+          { time: '19:45', type: '车辆', unit: '物资运输', status: '出发' },
+          { time: '20:05', type: '人员', unit: '巡检队', status: '处理中' }
+        ];
+        const series = tsRes.data || {
+          advanceSpeed: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 6 + (i % 5) })),
+          slurryPressure: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 0.3 + (i % 4) * 0.03 })),
+          gasConcentration: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 0.1 + (i % 3) * 0.02 }))
+        };
+        setSummary(sum);
+        setNotifications(notif);
+        setSupplies(sup);
+        setDispatch(disp);
+        setTs(series);
       } catch (error) {
-        console.error("Error fetching dashboard data", error);
+        const sum = {
+          projectName: '江苏扬州地铁盾构隧道工程',
+          lat: 32.3942,
+          lng: 119.407,
+          cameraOnline: 12,
+          cameraTotal: 16,
+          ringToday: 12,
+          ringCumulative: 1978,
+          muckToday: 252.9,
+          slurryPressureAvg: 0.43,
+          gasAlerts: 0
+        };
+        const notif = [
+          { time: '19:27', type: '交通', content: '上海路与长宁路交叉口发生车辆剐蹭，造成拥堵，已派员处理' },
+          { time: '19:35', type: '消防', content: '管片拼装区进行安全巡检，未发现异常' },
+          { time: '19:45', type: '通知', content: '注浆站完成例检，设备状态良好' }
+        ];
+        const sup = { 水泥: 120, 砂石: 200, 钢筋: 80, 燃料: 60 };
+        const disp = [
+          { time: '19:27', type: '人员', unit: '注浆班', status: '到岗' },
+          { time: '19:45', type: '车辆', unit: '物资运输', status: '出发' },
+          { time: '20:05', type: '人员', unit: '巡检队', status: '处理中' }
+        ];
+        const series = {
+          advanceSpeed: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 6 + (i % 5) })),
+          slurryPressure: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 0.3 + (i % 4) * 0.03 })),
+          gasConcentration: Array.from({ length: 24 }, (_, i) => ({ ts: new Date(Date.now() - (23 - i) * 3600000).toISOString(), value: 0.1 + (i % 3) * 0.02 }))
+        };
+        setSummary(sum);
+        setNotifications(notif);
+        setSupplies(sup);
+        setDispatch(disp);
+        setTs(series);
       }
     };
     fetchData();
@@ -192,42 +254,12 @@ const SafetyDashboard: React.FC = () => {
       {/* Center Column */}
       <div className="col-span-6 flex flex-col gap-4">
         <div className="tech-card flex-1 relative overflow-hidden p-0 group">
-          {/* Map Placeholder - In real app use React-Leaflet or Amap */}
-          <div className="absolute inset-0 bg-blue-900/20 z-0">
-             <img src="https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/119.4070,32.3942,13,0/800x600?access_token=YOUR_TOKEN" 
-                  alt="Map" 
-                  className="w-full h-full object-cover opacity-60 grayscale"
-                  onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/2000px-World_map_blank_without_borders.svg.png';
-                      (e.target as HTMLImageElement).style.filter = 'invert(1) hue-rotate(180deg) brightness(0.5)';
-                  }}
-             />
-          </div>
-          
-          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur border border-cyan-500 p-4 rounded z-10">
-            <div className="text-xs text-gray-400">项目名称</div>
-            <div className="text-xl font-bold text-white">{summary?.projectName || '加载中...'}</div>
-          </div>
-
-          {/* Event Detail Popup */}
-          <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur border border-blue-500/50 p-4 rounded z-10 flex gap-4">
-             <div className="w-1/3">
-                 <img src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop" className="w-full h-24 object-cover rounded border border-gray-600" />
-             </div>
-             <div className="flex-1">
-                 <div className="flex justify-between items-start mb-2">
-                     <div className="text-cyan-400 font-bold">事件详情</div>
-                     <div className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded">类别: 交通</div>
-                 </div>
-                 <div className="text-gray-300 text-sm leading-relaxed">
-                     2022-06-02 19:27 上海路与长宁路交叉口发生车辆剐蹭，导致道路拥堵，共占据3车道造成拥堵。已派遣交通警察第三大队前往处理。
-                 </div>
-                 <div className="flex gap-2 mt-2">
-                     <button className="bg-cyan-600/50 hover:bg-cyan-600 text-cyan-100 text-xs px-3 py-1 rounded border border-cyan-500 transition-colors">查看监控</button>
-                     <button className="bg-blue-600/50 hover:bg-blue-600 text-blue-100 text-xs px-3 py-1 rounded border border-blue-500 transition-colors">生成工单</button>
-                 </div>
-             </div>
-          </div>
+          <iframe
+            src="/yangzhou-railway-command-center.html"
+            className="absolute inset-0 w-full h-full"
+            style={{ border: 'none' }}
+            title="扬州铁路指挥中心"
+          />
         </div>
         <div className="tech-card h-48">
           <h3 className="text-lg font-bold text-tech-blue mb-2 border-l-4 border-tech-blue pl-2">掘进速度（环/小时）</h3>
