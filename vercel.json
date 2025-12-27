@@ -13,7 +13,9 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "api/index.py" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/assets/(.*)", "dest": "/frontend/assets/$1" },
+    { "src": "/(.*)\\.(.*)", "dest": "/frontend/$1.$2" },
+    { "src": "/(.*)", "dest": "/frontend/index.html" }
   ],
   "env": {
     "SUPABASE_URL": "https://komlrqbghyirkykmibrx.supabase.co",
