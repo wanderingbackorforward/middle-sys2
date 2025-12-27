@@ -26,14 +26,14 @@ const ProgressManagement: React.FC = () => {
     fetchData();
     const dispose = connectSSE('/api/stream/progress', {
       'progress.dailyRings': (p: any) => {
-        setDailyRings(prev => {
+        setDailyRings((prev: any[]) => {
           const arr = [...prev, p];
           if (arr.length > 300) arr.shift();
           return arr;
         });
       },
       'progress.stats': (p: any) => {
-        setStats(prev => prev ? { ...prev, ...p } : p);
+        setStats((prev: any) => prev ? { ...prev, ...p } : p);
       }
     });
     return () => dispose();
