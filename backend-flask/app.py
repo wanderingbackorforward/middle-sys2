@@ -5,7 +5,6 @@ from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from supabase_client import SupabaseClient
 from sse import SseHub
-from scheduler import start_scheduler
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -16,6 +15,7 @@ supa = SupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 sse_hub = SseHub()
 USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY and os.getenv("USE_SUPABASE", "0") == "1")
 if os.getenv("DISABLE_SCHEDULER", "0") != "1":
+    from scheduler import start_scheduler
     start_scheduler(supa, sse_hub)
 
 def fmt_time_str(iso):
