@@ -1,0 +1,86 @@
+{
+  "name": "bilibili_good_morning",
+  "description": "Post a “早上好” dynamic on Bilibili via Chrome DevTools MCP Server.",
+  "domain": "https://t.bilibili.com/",
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "https://t.bilibili.com/"
+    },
+    {
+      "action": "wait_for_selector",
+      "selector": "body",
+      "timeout_ms": 15000
+    },
+    {
+      "action": "assert_logged_in",
+      "selectors": [
+        "a[href*='passport']",
+        "button:has-text('登录')"
+      ],
+      "invert": true,
+      "timeout_ms": 0
+    },
+    {
+      "action": "find_selector",
+      "selectors": [
+        "textarea",
+        "div[contenteditable='true']",
+        "[data-testid='dyn-publish-editor']",
+        ".editor textarea",
+        ".bili-rich-textarea textarea"
+      ],
+      "save_as": "editor"
+    },
+    {
+      "action": "type_text",
+      "selector_ref": "editor",
+      "text": "早上好",
+      "clear": true
+    },
+    {
+      "action": "wait_for_selector",
+      "selector_ref": "editor",
+      "timeout_ms": 8000
+    },
+    {
+      "action": "find_selector",
+      "selectors": [
+        "button:has-text('发布')",
+        "button:has-text('发送')",
+        "button[type='submit']",
+        ".publish .btn-primary"
+      ],
+      "save_as": "publishBtn"
+    },
+    {
+      "action": "click",
+      "selector_ref": "publishBtn"
+    },
+    {
+      "action": "wait_for_dom_change",
+      "target": "#app, body",
+      "timeout_ms": 15000
+    },
+    {
+      "action": "wait_for_selector",
+      "selector": "article, .bili-dyn-item, [data-testid='dyn-item']",
+      "timeout_ms": 15000
+    },
+    {
+      "action": "if_selector_missing_retry",
+      "selector": "article, .bili-dyn-item, [data-testid='dyn-item']",
+      "max_retries": 2,
+      "delay_ms": 3000
+    },
+    {
+      "action": "screenshot",
+      "path": "automation/chrome-devtools-mcp/output/bilibili_good_morning.png",
+      "full_page": false
+    }
+  ],
+  "retry": {
+    "retries": 3,
+    "delay_ms": 3000
+  }
+}
