@@ -3,7 +3,7 @@
     {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": { "distDir": "frontend/dist", "buildCommand": "npm --prefix frontend run build" }
     },
     {
       "src": "api/index.py",
@@ -13,9 +13,11 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "api/index.py" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/", "dest": "frontend/dist/index.html" },
+    { "src": "/assets/(.*)", "dest": "frontend/dist/assets/$1" },
+    { "src": "/(.*)", "dest": "frontend/dist/index.html" }
+  ]
+}
   ],
   "env": {
     "SUPABASE_URL": "https://komlrqbghyirkykmibrx.supabase.co",
