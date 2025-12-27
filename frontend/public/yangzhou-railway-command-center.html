@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扬州市域铁路智慧指挥中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入地图库 Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- 字体 -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+    <!-- 图标 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-cyan: #06b6d4;
+            --primary-blue: #3b82f6;
+            --accent-gold: #fbbf24;
+            --alert-red: #ef4444;
+            --bg-dark: #050b14;
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --glass-bg: rgba(13, 24, 41, 0.85);
+            --card-gradient: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            --offline-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.2) 100%);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            color: #e2e8f0;
+            margin: 0;
+            height: 100vh;
+        }
+
+        .font-tech {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+            transition: all 0.5s ease;
+        }
+
+        /* 离线/跨越模式样式 */
+        .glass-panel.offline-mode {
+            background: rgba(30, 30, 30, 0.9);
+            border-color: rgba(255, 165, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.1);
+        }
+
+        .scanlines {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1));
+            background-size: 100% 3px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.3;
+        }
+
+        .tilt-wrapper {
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            height: calc(100vh - 180px);
+            max-height: 600px;
+            min-height: 450px;
+            transition: transform 0.1s ease-out;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: var(--card-gradient);
+            display: flex;
+            flex-direction: column;
+            top: 0;
+            left: 0;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+            background: rgba(8, 14, 28, 0.98);
+            border: 1px solid var(--primary-cyan);
+        }
+
+        .flip-btn-pulse {
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% {
+                box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(6, 182, 212, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+            }
+        }
+
+        /* 虚线警告框动画 */
+        .warning-border {
+            background-image: linear-gradient(45deg, #fbbf24 25%, transparent 25%, transparent 50%, #fbbf24 50%, #fbbf24 75%, transparent 75%, transparent);
+            background-size: 20px 20px;
+            animation: move-stripes 1s linear infinite;
+            opacity: 0.1;
+        }
+
+        @keyframes move-stripes {
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: 20px 20px;
+            }
+        }
+
+        /* 通用样式 */
+        .control-point-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .control-point-table th {
+            text-align: left;
+            color: var(--primary-cyan);
+            padding: 8px 4px;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.3);
+            font-weight: bold;
+        }
+
+        .control-point-table td {
+            padding: 6px 4px;
+            color: #cbd5e1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .geo-layer-tag {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+            border-left: 3px solid;
+            padding: 6px 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .custom-scroll {
+            overflow-y: auto;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: var(--primary-cyan);
+            border-radius: 4px;
+        }
+
+        .leaflet-container {
+            background: #000 !important;
+        }
+
+        .text-glow-cyan {
+            text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        /* ---- Tablet Responsive ---- */
+        @media (max-width: 1024px) {
+            aside.left-6 {
+                left: 12px;
+                width: 260px;
+            }
+
+            aside.right-6 {
+                right: 12px;
+                width: 340px;
+            }
+
+            .tilt-wrapper {
+                height: calc(100vh - 200px);
+                min-height: 400px;
+            }
+        }
+
+        /* ---- Mobile Phone Responsive ---- */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto;
+            }
+
+            /* Header */
+            header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px;
+                padding: 12px 15px !important;
+            }
+
+            header h1 {
+                font-size: 1rem !important;
+            }
+
+            header .text-xs {
+                font-size: 10px !important;
+            }
+
+            header .flex.flex-col.items-end {
+                width: 100%;
+                flex-direction: row !important;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            header button {
+                font-size: 10px;
+                padding: 6px 10px;
+            }
+
+            #clock {
+                font-size: 14px !important;
+            }
+
+            /* Left Sidebar - collapse/hide */
+            aside.top-24.left-6 {
+                position: fixed;
+                top: auto;
+                bottom: 160px;
+                left: 10px;
+                right: 10px;
+                width: auto !important;
+                max-height: 30vh;
+                overflow-y: auto;
+                z-index: 30;
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            aside.top-24.left-6 .glass-panel {
+                flex: 1 1 45%;
+                min-width: 140px;
+                padding: 12px;
+            }
+
+            aside.top-24.left-6 h3 {
+                font-size: 11px;
+            }
+
+            aside.top-24.left-6 .text-3xl {
+                font-size: 1.5rem !important;
+            }
+
+            /* Right Card - full width at bottom */
+            aside.top-24.right-6 {
+                position: fixed;
+                top: auto !important;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                width: auto !important;
+                z-index: 25;
+            }
+
+            .tilt-wrapper {
+                height: auto !important;
+                min-height: auto !important;
+                max-height: none;
+            }
+
+            .flip-card-front,
+            .flip-card-back {
+                position: relative;
+                height: auto;
+                min-height: 200px;
+            }
+
+            #card-zone-title {
+                font-size: 1.5rem !important;
+            }
+
+            .flip-card-front .text-3xl,
+            .flip-card-back .text-3xl {
+                font-size: 1.2rem !important;
+            }
+
+            /* Bottom Slider */
+            .absolute.bottom-10 {
+                bottom: auto;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                width: 95% !important;
+            }
+
+            .glass-panel.rounded-full {
+                flex-direction: column !important;
+                padding: 15px !important;
+                border-radius: 16px !important;
+                gap: 10px;
+            }
+
+            .glass-panel.rounded-full>.flex-shrink-0 {
+                width: 100%;
+                flex-direction: row !important;
+                justify-content: space-between;
+            }
+
+            .glass-panel.rounded-full .relative.flex-1 {
+                width: 100%;
+                margin: 10px 0;
+            }
+
+            /* Map adjustments */
+            #map {
+                height: 50vh;
+            }
+
+            /* Hide complex elements on very small screens */
+            .control-point-table {
+                font-size: 9px;
+            }
+
+            .geo-layer-tag {
+                font-size: 10px;
+                padding: 4px 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 0.85rem !important;
+            }
+
+            aside.top-24.left-6 {
+                display: none;
+                /* Hide left sidebar on very small screens */
+            }
+
+            aside.top-24.right-6 {
+                bottom: 5px;
+                left: 5px;
+                right: 5px;
+            }
+
+            .flip-card-front,
+            .flip-card-back {
+                padding: 12px !important;
+            }
+
+            #card-zone-title {
+                font-size: 1.2rem !important;
+            }
+
+            .glass-panel.rounded-full {
+                padding: 12px !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="selection:bg-cyan-500 selection:text-white">
+
+    <div class="scanlines"></div>
+    <div
+        class="absolute inset-0 pointer-events-none z-10 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.7)_100%)]">
+    </div>
+
+    <!-- 地图层 -->
+    <div id="map" class="absolute inset-0 z-0"></div>
+
+    <!-- 顶部标题栏 -->
+    <header
+        class="absolute top-0 left-0 w-full z-20 p-5 flex justify-between items-start bg-gradient-to-b from-black/90 via-black/50 to-transparent pointer-events-none">
+        <div class="flex items-center gap-4 pointer-events-auto group">
+            <div class="h-10 w-1.5 bg-cyan-500 shadow-[0_0_20px_#06b6d4]"></div>
+            <div>
+                <h1 class="text-2xl font-black tracking-widest text-white font-tech text-glow-cyan">智慧工程指挥中心</h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span
+                        class="px-2 py-0.5 bg-cyan-900/50 border border-cyan-500/30 rounded text-[10px] text-cyan-300">市域铁路</span>
+                    <p class="text-xs text-gray-300 tracking-wider">扬州至仪征线市域（郊）铁路工程扬州段</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex flex-col items-end gap-1 font-tech pointer-events-auto">
+            <button
+                class="px-3 py-1.5 text-xs font-bold rounded border border-cyan-500 text-cyan-300 bg-black/40 hover:bg-cyan-500 hover:text-black transition"
+                onclick="window.location.href='./gis-platform.html'">← 返回主界面</button>
+            <div
+                class="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+                <div class="text-right">
+                    <div id="clock" class="text-lg font-bold text-white leading-none">00:00:00</div>
+                    <div class="text-[10px] text-gray-400 text-right">实时监控</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 左侧数据面板 -->
+    <aside class="absolute top-24 left-6 w-72 z-20 flex flex-col gap-4 pointer-events-none">
+
+        <!-- 总体概况卡 -->
+        <div id="status-panel" class="glass-panel p-5 rounded-xl pointer-events-auto border-t-4 border-t-cyan-500">
+            <h3 class="text-cyan-400 text-sm font-bold mb-3 flex items-center justify-between">
+                <span><i class="fas fa-map-marked-alt mr-2"></i>施工区段总控</span>
+                <span id="zone-status-badge"
+                    class="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-400">施工中</span>
+            </h3>
+
+            <div class="flex items-end justify-between mb-2">
+                <div>
+                    <div class="text-xs text-gray-400">当前激活工区</div>
+                    <div id="current-zone-display" class="text-3xl font-black text-white font-tech text-glow-cyan mt-1">
+                        01</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-gray-400">地理特征</div>
+                    <div id="geo-type-display"
+                        class="text-xs font-bold text-white mt-1 bg-white/10 px-2 py-1 rounded inline-block">长江漫滩平原
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="flex justify-between text-xs text-gray-300 mb-2">
+                    <span>总体进度</span>
+                    <span id="total-progress-text" class="text-cyan-400 font-tech">32%</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden border border-white/5">
+                    <div id="total-progress-bar"
+                        class="bg-gradient-to-r from-cyan-600 via-cyan-400 to-white h-full w-[32%] relative"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地理水文环境监测 -->
+        <div id="env-panel" class="glass-panel p-5 rounded-xl pointer-events-auto">
+            <h3 class="text-accent-gold text-sm font-bold mb-3 flex items-center">
+                <i class="fas fa-layer-group mr-2"></i> 地理水文环境
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>地面高程 (m)</span>
+                        <span id="elevation-val" class="text-white font-tech">5.15 ~ 6.33</span>
+                    </div>
+                    <div class="flex h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="elevation-bar" class="bg-yellow-500 h-full transition-all duration-500"
+                            style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>地下水位埋深 (m)</span>
+                        <span id="water-val" class="text-white font-tech">0.75 ~ 3.70</span>
+                    </div>
+                    <div class="flex h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                        <div id="water-bar" class="bg-blue-500 h-full transition-all duration-500" style="width: 30%">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2 mt-2 pt-2 border-t border-white/10">
+                    <i class="fas fa-info-circle text-gray-500 text-xs mt-0.5"></i>
+                    <p id="geo-desc" class="text-[10px] text-gray-400 leading-tight">潜水水位受季节影响明显，需加强监测。</p>
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- 右侧动态信息卡片 -->
+    <aside class="absolute top-24 right-6 w-[400px] z-20 pointer-events-none">
+
+        <div id="tilt-container" class="tilt-wrapper w-full pointer-events-auto cursor-pointer group">
+
+            <div id="info-card-inner" class="flip-card-inner">
+
+                <!-- 正面：工程概况 -->
+                <div id="card-front" class="flip-card-front glass-panel rounded-xl p-6 border-b-4 border-b-blue-500">
+
+                    <!-- 离线模式下的覆盖层 (默认隐藏) -->
+                    <div id="offline-overlay" class="absolute inset-0 z-0 hidden warning-border"></div>
+
+                    <div class="absolute top-4 right-4 opacity-20 text-white transform translate-z-10">
+                        <i id="card-icon" class="fas fa-project-diagram text-6xl"></i>
+                    </div>
+
+                    <div class="relative z-20 flex flex-col gap-1 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span id="card-status-pill"
+                                class="px-2 py-0.5 bg-blue-900/40 border border-blue-500/30 rounded text-[10px] text-blue-300">工区详情</span>
+                            <div class="flex gap-1" id="card-dots">
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
+                            </div>
+                        </div>
+                        <h2 id="card-zone-title" class="text-3xl font-black text-white tracking-wide mt-2">01工区</h2>
+                        <div class="flex items-center gap-1.5 text-cyan-300">
+                            <i class="fas fa-map-pin text-xs"></i>
+                            <p id="card-location" class="text-sm font-medium">仪征万年路 - 工农路</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 custom-scroll space-y-4 pr-1 relative z-20">
+                        <!-- 工程范围 / 离线提示 -->
+                        <div id="scope-container" class="bg-white/5 p-3 rounded border-l-2 border-white/20">
+                            <p class="text-xs text-gray-400 mb-1 font-bold">工程范围</p>
+                            <p id="card-scope" class="text-xs text-gray-200 leading-relaxed text-justify">包含车站及区间土建施工。
+                            </p>
+                        </div>
+
+                        <div id="dynamic-info-block">
+                            <p class="text-xs text-gray-400 mb-2 font-bold flex items-center justify-between">
+                                <span id="dynamic-info-title">关键控制数据</span>
+                                <i class="fas fa-crosshairs text-cyan-500 text-[10px]"></i>
+                            </p>
+                            <div id="dynamic-info-content" class="grid grid-cols-2 gap-2"></div>
+                        </div>
+
+                        <div>
+                            <p id="geo-layer-title" class="text-xs text-gray-400 mb-2 font-bold">地质构造切片</p>
+                            <div id="card-geo-layer" class="grid grid-cols-2 gap-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between relative z-20">
+                        <span id="click-hint-text" class="text-[10px] text-gray-500">点击卡片任意位置查看详细数据</span>
+                        <div id="click-hint-icon"
+                            class="flip-btn-pulse w-6 h-6 rounded-full border border-cyan-500 flex items-center justify-center">
+                            <i class="fas fa-arrow-right text-cyan-500 text-[10px]"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 背面：精密数据表 -->
+                <div id="card-back" class="flip-card-back glass-panel rounded-xl p-6">
+                    <div
+                        class="flex justify-between items-center mb-4 pb-2 border-b border-cyan-500/30 shrink-0 z-20 relative">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">精密测量控制网</h3>
+                            <p class="text-[10px] text-cyan-400 opacity-80">独立坐标系 / 1985国家高程</p>
+                        </div>
+                        <div
+                            class="w-8 h-8 rounded bg-cyan-900/30 flex items-center justify-center border border-cyan-500 text-cyan-400">
+                            <i class="fas fa-ruler-combined"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-hidden flex flex-col min-h-0 z-20 relative">
+                        <div class="custom-scroll flex-1 pr-1">
+                            <div class="mb-4">
+                                <div class="text-xs text-gray-300 mb-2 pl-1 border-l-2 border-cyan-500 font-bold">平面控制点
+                                    (导线点)</div>
+                                <table class="control-point-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="20%">点号</th>
+                                            <th width="25%">X坐标</th>
+                                            <th width="25%">Y坐标</th>
+                                            <th width="30%">位置/备注</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="control-points-body"></tbody>
+                                </table>
+                            </div>
+
+                            <div>
+                                <div class="text-xs text-gray-300 mb-2 pl-1 border-l-2 border-yellow-500 font-bold">
+                                    高程控制点 (水准点)</div>
+                                <div id="level-points-list" class="grid grid-cols-1 gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-2 border-t border-white/10 shrink-0 flex justify-center z-20 relative">
+                        <button id="flip-back-btn"
+                            class="px-6 py-1.5 rounded-full border border-cyan-500/50 bg-cyan-900/20 text-cyan-300 text-xs hover:bg-cyan-500 hover:text-white transition-all flex items-center gap-2">
+                            <i class="fas fa-undo"></i> 返回概览
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-2 flex justify-end items-center gap-2 pr-2 opacity-70">
+            <span id="data-source-text" class="text-[10px] text-gray-400">数据来源: 实施性施工组织设计</span>
+            <div id="data-status-dot" class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+        </div>
+    </aside>
+
+    <!-- 底部控制栏 -->
+    <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-[90%] max-w-4xl z-20 pointer-events-auto">
+        <div class="glass-panel px-8 py-5 rounded-full flex items-center gap-6 relative overflow-hidden">
+            <div class="flex flex-col items-end gap-0.5 w-24 flex-shrink-0">
+                <span class="text-sm font-bold text-white">仪征</span>
+                <span class="text-[10px] text-gray-400">万年路站</span>
+            </div>
+
+            <div class="relative flex-1 group">
+                <div
+                    class="absolute top-1/2 w-full flex justify-between px-0.5 pointer-events-none transform -translate-y-1/2 text-[10px] text-gray-500 opacity-60">
+                    <div class="flex flex-col items-center gap-1"><span class="h-1.5 w-[1px] bg-gray-400"></span><span
+                            class="scale-75">01</span></div>
+                    <span class="h-1 w-[1px] bg-gray-600"></span>
+                    <div class="flex flex-col items-center gap-1"><span class="h-1.5 w-[1px] bg-cyan-500"></span><span
+                            class="scale-75 text-cyan-500">02</span></div>
+                    <!-- 新增跨越区间标记 -->
+                    <div class="flex flex-col items-center gap-1"><span class="h-1.5 w-[1px] bg-yellow-600"></span><span
+                            class="scale-75 text-yellow-600">...</span></div>
+                    <div class="flex flex-col items-center gap-1"><span class="h-1.5 w-[1px] bg-gray-400"></span><span
+                            class="scale-75">06</span></div>
+                </div>
+
+                <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-700 -translate-y-1/2 rounded-full"></div>
+
+                <input type="range" min="0" max="100" value="0" id="progress-slider"
+                    class="relative z-10 w-full opacity-0 cursor-pointer h-8">
+
+                <div id="slider-thumb"
+                    class="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-bg-dark border-2 border-cyan-400 rounded-full shadow-[0_0_10px_#06b6d4] pointer-events-none transition-transform duration-75 flex items-center justify-center z-20"
+                    style="left: 0%">
+                    <div class="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+
+                <div id="slider-fill"
+                    class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-cyan-600 to-cyan-400 -translate-y-1/2 rounded-full pointer-events-none"
+                    style="width: 0%"></div>
+            </div>
+
+            <div class="flex flex-col items-start gap-0.5 w-24 flex-shrink-0">
+                <span class="text-sm font-bold text-white">扬州</span>
+                <span class="text-[10px] text-gray-400">西站</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 定义空对象以表示03-05工区数据缺失，但地理连续
+        const GAP_ZONE = {
+            id: '...',
+            title: "跨越区间 (03-05工区)",
+            location: "仪征东 - 扬州西 (过渡段)",
+            geoType: "沿途地形复杂",
+            geoDesc: "正在穿越非本标段施工区域 (03、04、05工区)。",
+            elevation: "--",
+            waterLevel: "--",
+            isGap: true, // 标记为断层
+            geoLayers: [
+                { name: "数据未接入", color: "border-gray-600 text-gray-500" }
+            ],
+            hasPreciseCoords: false,
+            dynamicInfo: [
+                { label: "状态", value: "数据未授权" },
+                { label: "来源", value: "第三方施工单位" }
+            ],
+            alternativeTable: [
+                { type: "系统提示", name: "该区段数据未接入", loc: "03-05工区", note: "无权限" }
+            ],
+            levelPoints: []
+        };
+
+        const zoneData = [
+            {
+                id: '01',
+                range: [0, 30], // 调整范围
+                title: "01工区",
+                location: "扬州万年路 - 工农路",
+                geoType: "长江漫滩平原",
+                geoDesc: "地层主要为淤泥质粉质黏土，具有高灵敏度、高压缩性特点。",
+                elevation: "4.20 ~ 10.20",
+                waterLevel: "1.20 ~ 3.80",
+                geoLayers: [
+                    { name: "杂填土", color: "border-gray-500 text-gray-300" },
+                    { name: "淤泥质粉质黏土", color: "border-yellow-700 text-yellow-200" },
+                    { name: "粉质黏土", color: "border-yellow-600 text-yellow-100" },
+                    { name: "泥岩 (中风化)", color: "border-stone-500 text-stone-300" }
+                ],
+                hasPreciseCoords: false,
+                dynamicInfo: [
+                    { label: "智慧工地", value: "视频监控全覆盖" },
+                    { label: "实名制", value: "人脸识别通道" },
+                    { label: "扬尘监测", value: "PM2.5/10 联动" },
+                    { label: "平台对接", value: "扬州市监管平台" }
+                ],
+                alternativeTable: [
+                    { type: "监测项目", name: "深基坑水平位移", loc: "车站主体基坑", note: "一级监测点" },
+                    { type: "监测项目", name: "周边地表沉降", loc: "万年路沿线", note: "±2mm预警" },
+                    { type: "监测项目", name: "地下水位监测", loc: "基坑外观测孔", note: "每日一测" },
+                    { type: "施工重点", name: "下穿仪城河", loc: "DK24+XXX", note: "防渗漏特级" }
+                ],
+                levelPoints: [
+                    { id: "基准点A1", h: "4.502m (原始基准)" },
+                    { id: "基准点A2", h: "4.891m (校核基准)" }
+                ]
+            },
+            {
+                id: '02',
+                range: [30, 50],
+                title: "02工区",
+                location: "天宁大道站 - 仪征开发区",
+                geoType: "长江漫滩平原",
+                geoDesc: "地势平坦，沿真州东路敷设，穿越多条市政管线。",
+                elevation: "4.92 ~ 10.20",
+                waterLevel: "0.75 ~ 3.70",
+                geoLayers: [
+                    { name: "杂填土", color: "border-gray-500 text-gray-300" },
+                    { name: "粉砂", color: "border-orange-300 text-orange-100" },
+                    { name: "粉质黏土", color: "border-yellow-600 text-yellow-100" },
+                    { name: "泥质粉砂岩", color: "border-red-900 text-red-200" }
+                ],
+                hasPreciseCoords: true,
+                dynamicInfo: [
+                    { label: "X坐标范围", value: "3573062 - 3788" },
+                    { label: "Y坐标范围", value: "502349 - 5949" },
+                    { label: "导线点数", value: "6 个一级点" },
+                    { label: "测量等级", value: "精密导线网" }
+                ],
+                controlPoints: [
+                    { id: "DTNY-90", x: "3573062.096", y: "502349.962", loc: "汉密尔顿酒店" },
+                    { id: "DTNY-35", x: "3573497.033", y: "502690.270", loc: "万博社区" },
+                    { id: "DTNY-96", x: "3573412.626", y: "504055.624", loc: "玖龙天街" },
+                    { id: "DTNY-20", x: "3573497.035", y: "505179.049", loc: "宝能睿城" },
+                    { id: "DTNY-36", x: "3573788.724", y: "505949.471", loc: "真州东路" }
+                ],
+                levelPoints: [
+                    { id: "DTS5-26", h: "9.4407m (国家电网)" },
+                    { id: "DTS5-25", h: "10.3992m (红叶社区)" },
+                    { id: "DTS5-24", h: "5.7964m (全季酒店)" },
+                    { id: "DTS5-23", h: "5.8820m (仪征汽车站)" }
+                ]
+            },
+            // 插入 GAP
+            {
+                ...GAP_ZONE,
+                range: [50, 75]
+            },
+            {
+                id: '06',
+                range: [75, 100],
+                title: "06工区",
+                location: "站南路站 - 扬州西站",
+                geoType: "长江漫滩平原及岗地",
+                geoDesc: "扬州西站为岗地地形，地势起伏较大 (11m-27m)。",
+                elevation: "4.87 ~ 27.00",
+                waterLevel: "0.40 ~ 3.80",
+                geoLayers: [
+                    { name: "粉土", color: "border-yellow-200 text-yellow-50" },
+                    { name: "粉砂夹粉土", color: "border-orange-200 text-orange-50" },
+                    { name: "圆砾", color: "border-stone-600 text-stone-200" },
+                    { name: "泥质粉砂岩", color: "border-red-900 text-red-200" }
+                ],
+                hasPreciseCoords: true,
+                dynamicInfo: [
+                    { label: "X坐标范围", value: "3583037 - 5040" },
+                    { label: "Y坐标范围", value: "518450 - 9116" },
+                    { label: "关键位置", value: "扬州火车站" },
+                    { label: "地形特征", value: "起伏较大" }
+                ],
+                controlPoints: [
+                    { id: "DTNY-12", x: "3585040.752", y: "518860.669", loc: "文昌西路" },
+                    { id: "DTNY-67", x: "3584922.250", y: "518450.789", loc: "扬州西站" },
+                    { id: "DTNY-98", x: "3584260.339", y: "518580.081", loc: "金地酩悦" },
+                    { id: "DTNY-88", x: "3583037.463", y: "519116.885", loc: "湖滨名都" }
+                ],
+                levelPoints: [
+                    { id: "DTS5-1", h: "17.4547m (扬州火车站)" },
+                    { id: "DTNY-18", h: "7.5373m (栖祥路)" },
+                    { id: "DTNY-41", h: "8.1734m (蒋王路)" }
+                ]
+            }
+        ];
+
+        let map, routeLine, currentMarker, currentZoneIndex = -1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initClock();
+            initSlider();
+            initCardInteraction();
+            updateDashboard(0);
+        });
+
+        function initCardInteraction() {
+            const container = document.getElementById('tilt-container');
+            const inner = document.getElementById('info-card-inner');
+            const backBtn = document.getElementById('flip-back-btn');
+
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const xPct = (x / rect.width) - 0.5;
+                const yPct = (y / rect.height) - 0.5;
+                const rotateY = xPct * 20;
+                const rotateX = -yPct * 20;
+                container.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+
+            container.addEventListener('mouseleave', () => {
+                container.style.transform = `rotateX(0deg) rotateY(0deg)`;
+            });
+
+            container.addEventListener('click', (e) => {
+                // 如果是断层模式，禁止翻转，因为没有背面数据
+                if (zoneData[currentZoneIndex].isGap) return;
+                inner.classList.toggle('flipped');
+            });
+
+            backBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                inner.classList.remove('flipped');
+            });
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false
+            }).setView([32.33, 119.28], 11);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19
+            }).addTo(map);
+
+            L.rectangle([[31.0, 118.0], [33.0, 120.0]], { color: 'transparent', fillColor: '#050b14', fillOpacity: 0.5 }).addTo(map);
+
+            const pathCoords = [
+                [32.268, 119.160], // 01: 仪征万年路
+                [32.275, 119.185], // 01-02交界
+                [32.283, 119.205], // 02: 仪征东
+                // === 新增插值点以填充 02-06 的空缺 (G328/城际线大致走向) ===
+                [32.300, 119.250], // 朴席镇附近
+                [32.330, 119.300], // 汊河枢纽附近
+                [32.360, 119.350], // 接近扬州西
+                // ========================================================
+                [32.385, 119.390], // 06: 站南路 (扬州)
+                [32.396, 119.395]  // 06: 扬州西站
+            ];
+
+            routeLine = L.polyline(pathCoords, { color: '#06b6d4', weight: 4, opacity: 0.8, dashArray: '10, 15' }).addTo(map);
+            L.polyline(pathCoords, { color: '#3b82f6', weight: 12, opacity: 0.2 }).addTo(map);
+
+            pathCoords.forEach(coord => {
+                L.circleMarker(coord, { radius: 3, color: '#fff', fillColor: '#06b6d4', fillOpacity: 1 }).addTo(map);
+            });
+
+            const iconHtml = `<div class="relative w-8 h-8 flex items-center justify-center"><div class="absolute w-full h-full border-2 border-cyan-500 rounded-full opacity-60 shadow-[0_0_15px_#06b6d4]"></div><div class="absolute w-3 h-3 bg-white rounded-full shadow-[0_0_10px_#fff] z-10"></div></div>`;
+            currentMarker = L.marker(pathCoords[0], { icon: L.divIcon({ html: iconHtml, className: 'bg-transparent', iconSize: [32, 32], iconAnchor: [16, 16] }) }).addTo(map);
+        }
+
+        function initSlider() {
+            const slider = document.getElementById('progress-slider');
+            const thumb = document.getElementById('slider-thumb');
+            const fill = document.getElementById('slider-fill');
+
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                thumb.style.left = val + '%';
+                fill.style.width = val + '%';
+                updateMapMarkerPosition(val);
+                updateDashboard(val);
+            });
+        }
+
+        function updateMapMarkerPosition(percent) {
+            const points = routeLine.getLatLngs();
+            const totalLength = points.length - 1;
+            const segmentSize = 100 / totalLength;
+            const segmentIndex = Math.floor(percent / segmentSize);
+            const segmentPercent = (percent % segmentSize) / segmentSize;
+
+            if (segmentIndex >= totalLength) { currentMarker.setLatLng(points[totalLength]); return; }
+
+            const p1 = points[segmentIndex], p2 = points[segmentIndex + 1];
+            const lat = p1.lat + (p2.lat - p1.lat) * segmentPercent;
+            const lng = p1.lng + (p2.lng - p1.lng) * segmentPercent;
+            const newPos = L.latLng(lat, lng);
+
+            currentMarker.setLatLng(newPos);
+            map.panTo(newPos, { animate: true, duration: 0.5 });
+        }
+
+        function updateDashboard(val) {
+            // 调整判断逻辑以匹配新的四段式划分
+            let activeZone = zoneData[0];
+            if (val > 30 && val <= 50) activeZone = zoneData[1];
+            if (val > 50 && val <= 75) activeZone = zoneData[2]; // GAP
+            if (val > 75) activeZone = zoneData[3];
+
+            if (zoneData.indexOf(activeZone) !== currentZoneIndex) {
+                currentZoneIndex = zoneData.indexOf(activeZone);
+                renderZoneCard(activeZone);
+                const inner = document.getElementById('info-card-inner');
+                const container = document.getElementById('tilt-container');
+                inner.classList.remove('flipped');
+                container.style.transform = `rotateX(0deg) rotateY(0deg)`;
+            }
+
+            document.getElementById('total-progress-text').innerText = parseInt(val) + '%';
+            document.getElementById('total-progress-bar').style.width = val + '%';
+        }
+
+        function renderZoneCard(data) {
+            const isGap = data.isGap === true;
+
+            // UI 状态切换：离线/在线
+            const panels = document.querySelectorAll('.glass-panel');
+            const overlay = document.getElementById('offline-overlay');
+            const statusBadge = document.getElementById('zone-status-badge');
+            const dataStatusDot = document.getElementById('data-status-dot');
+            const dataSourceText = document.getElementById('data-source-text');
+            const clickHint = document.getElementById('click-hint-text');
+            const clickIcon = document.getElementById('click-hint-icon');
+
+            if (isGap) {
+                panels.forEach(p => p.classList.add('offline-mode'));
+                overlay.classList.remove('hidden');
+                statusBadge.className = "text-[10px] bg-yellow-500/20 px-2 py-0.5 rounded text-yellow-400";
+                statusBadge.innerText = "数据未接入";
+                dataStatusDot.className = "w-1.5 h-1.5 bg-red-500 rounded-full";
+                dataSourceText.innerText = "数据源: 系统无记录";
+                clickHint.innerText = "该区域数据暂不可用";
+                clickIcon.style.opacity = '0.3';
+                document.getElementById('card-icon').className = "fas fa-ban text-6xl text-red-500";
+                document.getElementById('card-status-pill').className = "px-2 py-0.5 bg-red-900/40 border border-red-500/30 rounded text-[10px] text-red-300";
+                document.getElementById('card-status-pill').innerText = "无权限";
+            } else {
+                panels.forEach(p => p.classList.remove('offline-mode'));
+                overlay.classList.add('hidden');
+                statusBadge.className = "text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-400";
+                statusBadge.innerText = "施工中";
+                dataStatusDot.className = "w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse";
+                dataSourceText.innerText = "数据源: 实施性施工组织设计";
+                clickHint.innerText = "点击卡片任意位置查看详细数据";
+                clickIcon.style.opacity = '1';
+                document.getElementById('card-icon').className = "fas fa-project-diagram text-6xl";
+                document.getElementById('card-status-pill').className = "px-2 py-0.5 bg-blue-900/40 border border-blue-500/30 rounded text-[10px] text-blue-300";
+                document.getElementById('card-status-pill').innerText = "工区详情";
+            }
+
+            document.getElementById('current-zone-display').innerText = data.id;
+            document.getElementById('geo-type-display').innerText = data.geoType;
+
+            document.getElementById('elevation-val').innerText = data.elevation;
+            document.getElementById('water-val').innerText = data.waterLevel;
+            document.getElementById('geo-desc').innerText = data.geoDesc;
+
+            // 简单模拟条形图 (Gap时不显示进度)
+            if (isGap) {
+                document.getElementById('elevation-bar').style.width = '0%';
+                document.getElementById('water-bar').style.width = '0%';
+            } else {
+                const avgEle = parseFloat(data.elevation.split('~')[1]) || 10;
+                const avgWater = parseFloat(data.waterLevel.split('~')[1]) || 3;
+                document.getElementById('elevation-bar').style.width = Math.min((avgEle / 27) * 100, 100) + '%';
+                document.getElementById('water-bar').style.width = Math.min((avgWater / 5) * 100, 100) + '%';
+            }
+
+            document.getElementById('card-zone-title').innerText = data.title;
+            document.getElementById('card-location').innerText = data.location;
+
+            // 范围描述
+            let scopeText = data.geoDesc;
+            if (!isGap) {
+                scopeText += " " + (data.hasPreciseCoords ? "施工区域具备精密控制网。" : "重点进行智慧工地建设。");
+            }
+            document.getElementById('card-scope').innerText = scopeText;
+
+            const dynamicContainer = document.getElementById('dynamic-info-content');
+            dynamicContainer.innerHTML = '';
+            document.getElementById('dynamic-info-title').innerText = (data.hasPreciseCoords || isGap) ? "区域控制概览" : "智慧工地 / 施工重点";
+
+            data.dynamicInfo.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white/5 p-2 rounded border border-white/10 flex flex-col justify-center";
+                // 警示色
+                const valColor = isGap ? "text-yellow-500" : "text-cyan-400";
+                div.innerHTML = `<span class="text-[10px] text-gray-500 mb-0.5">${item.label}</span><span class="text-xs ${valColor} font-bold truncate">${item.value}</span>`;
+                dynamicContainer.appendChild(div);
+            });
+
+            const layerList = document.getElementById('card-geo-layer');
+            layerList.innerHTML = '';
+            data.geoLayers.forEach(l => {
+                const div = document.createElement('div');
+                div.className = `geo-layer-tag ${l.color}`;
+                div.innerHTML = `<span>${l.name}</span> <i class="fas fa-layer-group opacity-50 text-[10px]"></i>`;
+                layerList.appendChild(div);
+            });
+
+            // 只有非Gap状态才渲染背面表格 (反正也翻不过去)
+            if (!isGap) {
+                const tbody = document.getElementById('control-points-body');
+                tbody.innerHTML = '';
+
+                if (data.hasPreciseCoords) {
+                    data.controlPoints.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${p.id}</td><td>${Number(p.x).toFixed(3)}</td><td>${Number(p.y).toFixed(3)}</td><td class="text-gray-400">${p.loc}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    data.alternativeTable.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td class="text-yellow-400">${p.type}</td><td colspan="2">${p.name}</td><td class="text-gray-400">${p.note}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                const levelList = document.getElementById('level-points-list');
+                levelList.innerHTML = '';
+                data.levelPoints.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-cyan-900/10 px-3 py-2 rounded border-l-2 border-cyan-500 text-xs text-cyan-200 flex justify-between items-center';
+                    div.innerHTML = `<span class="font-bold">${p.id}</span> <span>${p.h}</span>`;
+                    levelList.appendChild(div);
+                });
+            }
+        }
+
+        function initClock() {
+            setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-CN', { hour12: false }), 1000);
+        }
+
+        window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+
+    </script>
+</body>
+
+</html>
