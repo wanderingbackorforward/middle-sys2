@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "深圳市", "adcode": 440300 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.8, 22.4],
+            [114.2, 22.4],
+            [114.2, 22.7],
+            [113.8, 22.7],
+            [113.8, 22.4]
+          ]
+        ]
+      }
+    }
+  ]
+}
