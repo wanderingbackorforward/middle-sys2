@@ -6,6 +6,7 @@ import SafetyManagement from './pages/SafetyManagement';
 import VideoMonitoring from './pages/VideoMonitoring';
 import ProgressManagement from './pages/ProgressManagement';
 import MapLanding from './pages/MapLanding';
+import DigitalShield from './pages/DigitalShield';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="safety" element={<SafetyManagement />} />
           <Route path="video" element={<VideoMonitoring />} />
           <Route path="progress" element={<ProgressManagement />} />
+          <Route path="digital-shield" element={<DigitalShield />} />
         </Route>
       </Routes>
     </BrowserRouter>

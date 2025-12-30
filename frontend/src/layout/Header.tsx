@@ -17,6 +17,7 @@ const Header: React.FC = () => {
     { label: '安全管理', path: '/safety' },
     { label: '视频监控', path: '/video' },
     { label: '进度管理', path: '/progress' },
+    { label: '数字盾构', path: '/digital-shield' },
   ];
 
   return (
