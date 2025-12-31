@@ -2,6 +2,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+from openai import OpenAI
 from datetime import datetime, timezone
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
@@ -323,6 +324,30 @@ def ai_gemini():
         return jsonify({"text": text})
     except urllib.error.HTTPError as e:
         return jsonify({"error": f"HTTP {e.code}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+@app.post("/api/ai/deepseek")
+def ai_deepseek():
+    body = request.get_json(silent=True) or {}
+    prompt = body.get("prompt", "")
+    system_instruction = body.get("systemInstruction", "")
+    api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "DEEPSEEK_API_KEY not set"}), 500
+    try:
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+        resp = client.chat.completions.create(model="deepseek-chat", messages=messages, stream=False)
+        text = ""
+        try:
+            text = resp.choices[0].message.content or ""
+        except Exception:
+            pass
+        return jsonify({"text": text})
     except Exception as e:
         return jsonify({"error": str(e)}), 502
 

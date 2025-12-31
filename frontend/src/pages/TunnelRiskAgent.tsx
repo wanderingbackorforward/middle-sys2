@@ -34,7 +34,7 @@ import { connectSSE } from '../utils/sse';
 
 const callGemini = async (prompt: string, systemInstruction = ''): Promise<string> => {
   try {
-    const resp = await fetch(`/api/ai/gemini`, {
+    const resp = await fetch(`/api/ai/deepseek`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, systemInstruction })
@@ -45,23 +45,27 @@ const callGemini = async (prompt: string, systemInstruction = ''): Promise<strin
       if (t && typeof t === 'string') return t;
     }
   } catch {}
-  const key = (import.meta as any).env?.VITE_PUBLIC_GEMINI_KEY;
+  const key = (import.meta as any).env?.VITE_PUBLIC_DEEPSEEK_KEY;
   if (!key) return '连接大模型服务失败，请检查网络或配额。';
   try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
-        })
-      }
-    );
+    const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          { role: 'user', content: prompt }
+        ],
+        stream: false
+      })
+    });
     if (!r.ok) throw new Error('API Call Failed');
     const data = await r.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data?.choices?.[0]?.message?.content;
     return text || '智能体响应异常，请稍后重试。';
   } catch {
     return '连接大模型服务失败，请检查网络或配额。';
