@@ -1,0 +1,7 @@
+backend/target/
+backend-flask/__pycache__/
+backend-flask/venv/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+Thumbs.db
