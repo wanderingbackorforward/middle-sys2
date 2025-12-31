@@ -673,6 +673,12 @@ const TunnelRiskAgent: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-auto">
+                  {isAnalyzing && !aiAnalysis && (
+                    <div className="bg-indigo-950/30 border border-indigo-500/30 rounded p-3 flex items-center gap-2">
+                      <Loader2 className="animate-spin text-indigo-400" size={14} />
+                      <span className="text-[11px] text-indigo-300">智能体正在生成深度简报...</span>
+                    </div>
+                  )}
                   {aiAnalysis && (
                     <div className="bg-indigo-950/30 border border-indigo-500/30 rounded p-3 max-h-40 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-5">
                       <div className="flex items-center gap-2 mb-2 sticky top-0 bg-slate-900/0 backdrop-blur-sm pb-1">
