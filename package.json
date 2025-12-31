@@ -1,0 +1,12 @@
+{
+  "name": "middle-sys2-root",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "openai": "^4.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30"
+  }
+}

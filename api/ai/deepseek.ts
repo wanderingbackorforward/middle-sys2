@@ -1,7 +1,6 @@
-import type { VercelRequest, VercelResponse } from 'vercel';
 import OpenAI from 'openai';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -26,4 +25,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(502).json({ error: e?.message || 'DeepSeek call failed' });
   }
 }
-
