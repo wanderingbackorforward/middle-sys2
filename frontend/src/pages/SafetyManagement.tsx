@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
+import { apiUrl } from '../utils/api';
 
 const SafetyManagement = () => {
   const [risks, setRisks] = useState<any[]>([]);
@@ -13,10 +14,10 @@ const SafetyManagement = () => {
     const fetchData = async () => {
       try {
         const [riskRes, setRes, scoreRes, alarmRes] = await Promise.all([
-          axios.get('/api/safety/risks'),
-          axios.get('/api/safety/settlement'),
-          axios.get('/api/safety/score'),
-          axios.get('/api/safety/alarmTrend')
+          axios.get(apiUrl('/api/safety/risks')),
+          axios.get(apiUrl('/api/safety/settlement')),
+          axios.get(apiUrl('/api/safety/score')),
+          axios.get(apiUrl('/api/safety/alarmTrend'))
         ]);
         setRisks(riskRes.data);
         setSettlement(setRes.data);
@@ -27,7 +28,7 @@ const SafetyManagement = () => {
       }
     };
     fetchData();
-    const dispose = connectSSE('/api/stream/safety', {
+    const dispose = connectSSE(apiUrl('/api/stream/safety'), {
       'safety.settlement.actual': (p: any) => {
         setSettlement((prev: any) => {
           const actual = prev?.actual ? [...prev.actual, p] : [p];

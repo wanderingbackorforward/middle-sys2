@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { apiUrl } from '../utils/api';
 import VideoTile from '../components/VideoTile';
 
 const VideoMonitoring = () => {
@@ -8,7 +9,7 @@ const VideoMonitoring = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get('/api/video/list');
+        const res = await axios.get(apiUrl('/api/video/list'));
         setVideos(res.data);
       } catch (error) {
         console.error("Error fetching video data", error);
@@ -28,7 +29,7 @@ const VideoMonitoring = () => {
   const [newStatus, setNewStatus] = useState('在线');
   const addCamera = async () => {
     try {
-      const res = await axios.post('/api/video/add', { name: newName, streamUrl: newUrl, status: newStatus });
+      const res = await axios.post(apiUrl('/api/video/add'), { name: newName, streamUrl: newUrl, status: newStatus });
       setVideos(prev => [...prev, res.data.item]);
       setShowAdd(false);
       setNewName('');

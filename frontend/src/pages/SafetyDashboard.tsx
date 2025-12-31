@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
+import { apiUrl } from '../utils/api';
 import { connectSSE } from '../utils/sse';
 
 interface DashboardSummary {
@@ -27,11 +28,11 @@ const SafetyDashboard = () => {
     const fetchData = async () => {
       try {
         const [sumRes, notifRes, supRes, dispRes, tsRes] = await Promise.all([
-          axios.get('/api/dashboard/summary'),
-          axios.get('/api/dashboard/notifications'),
-          axios.get('/api/dashboard/supplies'),
-          axios.get('/api/dashboard/dispatch'),
-          axios.get('/api/dashboard/timeseries')
+          axios.get(apiUrl('/api/dashboard/summary')),
+          axios.get(apiUrl('/api/dashboard/notifications')),
+          axios.get(apiUrl('/api/dashboard/supplies')),
+          axios.get(apiUrl('/api/dashboard/dispatch')),
+          axios.get(apiUrl('/api/dashboard/timeseries'))
         ]);
         const sum = sumRes.data || {
           projectName: '江苏扬州地铁盾构隧道工程',
@@ -105,7 +106,7 @@ const SafetyDashboard = () => {
       }
     };
     fetchData();
-    const dispose = connectSSE('/api/stream/dashboard', {
+    const dispose = connectSSE(apiUrl('/api/stream/dashboard'), {
       'dashboard.advanceSpeed': (p: any) => {
         setTs((prev: any) => {
           const arr = [...(prev.advanceSpeed || []), p];

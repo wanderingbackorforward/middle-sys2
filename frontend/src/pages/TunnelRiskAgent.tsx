@@ -31,10 +31,11 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { connectSSE } from '../utils/sse';
+import { apiUrl } from '../utils/api';
 
 const callGemini = async (prompt: string, systemInstruction = ''): Promise<string> => {
   try {
-    const resp = await fetch(`/api/ai/deepseek`, {
+    const resp = await fetch(apiUrl(`/api/ai/deepseek`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, systemInstruction })
@@ -238,13 +239,13 @@ const TunnelRiskAgent: React.FC = () => {
   }, [agentLogs]);
 
   useEffect(() => {
-    const disconnectRisk = connectSSE('/api/stream/tunnel-risk', {
+    const disconnectRisk = connectSSE(apiUrl('/api/stream/tunnel-risk'), {
       risk: (payload: any) => {
         const t = payload?.type as 'personnel' | 'gas' | 'vehicle' | undefined;
         if (t) triggerRiskScenario(t);
       }
     });
-    const disconnectSensors = connectSSE('/api/stream/sensors', {
+    const disconnectSensors = connectSSE(apiUrl('/api/stream/sensors'), {
       sensor: (payload: any) => {
         const g = Number(payload?.gas);
         const p = Number(payload?.pressure);

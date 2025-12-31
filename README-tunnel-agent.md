@@ -3,6 +3,7 @@
 ## 环境变量
 - `GEMINI_API_KEY`: 用于后端代理调用 Google Generative Language API。请不要将真实密钥写入代码库，使用环境变量方式配置。
 - 可选：`USE_SUPABASE=1` 与 `SUPABASE_URL`、`SUPABASE_SERVICE_KEY` 以启用真实数据读取。
+ - 前端：`VITE_API_BASE_URL` 指向后端域名；`VITE_PUBLIC_DEEPSEEK_KEY`（前端直连回退）
 
 ## 后端运行
 - 目录：`backend-flask`

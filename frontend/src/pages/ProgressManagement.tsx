@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
+import { apiUrl } from '../utils/api';
 import ReactECharts from 'echarts-for-react';
 
 const ProgressManagement = () => {
@@ -12,9 +13,9 @@ const ProgressManagement = () => {
     const fetchData = async () => {
       try {
         const [statsRes, ganttRes, ringsRes] = await Promise.all([
-            axios.get('/api/progress/stats'),
-            axios.get('/api/progress/gantt'),
-            axios.get('/api/progress/dailyRings')
+            axios.get(apiUrl('/api/progress/stats')),
+            axios.get(apiUrl('/api/progress/gantt')),
+            axios.get(apiUrl('/api/progress/dailyRings'))
         ]);
         setStats(statsRes.data);
         setGantt(ganttRes.data);
@@ -24,7 +25,7 @@ const ProgressManagement = () => {
       }
     };
     fetchData();
-    const dispose = connectSSE('/api/stream/progress', {
+    const dispose = connectSSE(apiUrl('/api/stream/progress'), {
       'progress.dailyRings': (p: any) => {
         setDailyRings((prev: any[]) => {
           const arr = [...prev, p];

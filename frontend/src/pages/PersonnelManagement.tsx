@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
+import { apiUrl } from '../utils/api';
 import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -22,10 +23,10 @@ const PersonnelManagement = () => {
     const fetchData = async () => {
       try {
         const [statsRes, distRes, listRes, trendRes] = await Promise.all([
-          axios.get('/api/personnel/stats'),
-          axios.get('/api/personnel/distribution'),
-          axios.get('/api/personnel/list'),
-          axios.get('/api/personnel/attendanceTrend')
+          axios.get(apiUrl('/api/personnel/stats')),
+          axios.get(apiUrl('/api/personnel/distribution')),
+          axios.get(apiUrl('/api/personnel/list')),
+          axios.get(apiUrl('/api/personnel/attendanceTrend'))
         ]);
         setStats(statsRes.data);
         setDistribution(distRes.data);
@@ -36,7 +37,7 @@ const PersonnelManagement = () => {
       }
     };
     fetchData();
-    const dispose = connectSSE('/api/stream/personnel', {
+    const dispose = connectSSE(apiUrl('/api/stream/personnel'), {
       'personnel.attendanceTrend': (p: any) => {
         setAttendanceTrend(prev => {
           const arr = [...prev, p];
