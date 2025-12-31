@@ -284,5 +284,10 @@ def stream_topic(topic):
     q = sse_hub.subscribe(topic)
     return Response(event_stream(q), mimetype="text/event-stream")
 
+@app.get("/api/health")
+def health():
+    status = "ok"
+    return jsonify({"status": status, "useSupabase": USE_SUPABASE})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)
