@@ -7,6 +7,7 @@ export function connectSSE(url: string, handlers: SSEHandlers) {
 
   const open = () => {
     es = new EventSource(url);
+    console.info('[sse] open', url);
     es.addEventListener('message', (e: MessageEvent) => {
       try {
         const evt = JSON.parse(e.data);
@@ -16,6 +17,7 @@ export function connectSSE(url: string, handlers: SSEHandlers) {
     });
     es.addEventListener('heartbeat', () => {});
     es.onerror = () => {
+      console.error('[sse] error', url);
       if (es) es.close();
       es = null;
       if (!closed) {
@@ -29,5 +31,6 @@ export function connectSSE(url: string, handlers: SSEHandlers) {
   return () => {
     closed = true;
     if (es) es.close();
+    console.info('[sse] close', url);
   };
 }

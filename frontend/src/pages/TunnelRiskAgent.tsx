@@ -35,20 +35,24 @@ import { apiUrl } from '../utils/api';
 
 const callGemini = async (prompt: string, systemInstruction = ''): Promise<string> => {
   try {
+    console.log('[ai] request backend', apiUrl(`/api/ai/deepseek`));
     const resp = await fetch(apiUrl(`/api/ai/deepseek`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, systemInstruction })
     });
     if (resp.ok) {
-      const data = await resp.json();
+      const data = await resp.json().catch(() => null);
+      console.log('[ai] backend resp ok json=', data);
       const t = data?.text;
       if (t && typeof t === 'string') return t;
     }
+    console.warn('[ai] backend resp not ok status=', resp.status);
   } catch {}
   const key = (import.meta as any).env?.VITE_PUBLIC_DEEPSEEK_KEY;
   if (!key) return '连接大模型服务失败，请检查网络或配额。';
   try {
+    console.warn('[ai] fallback direct');
     const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -66,6 +70,7 @@ const callGemini = async (prompt: string, systemInstruction = ''): Promise<strin
     });
     if (!r.ok) throw new Error('API Call Failed');
     const data = await r.json();
+    console.log('[ai] direct resp json=', data);
     const text = data?.choices?.[0]?.message?.content;
     return text || '智能体响应异常，请稍后重试。';
   } catch {

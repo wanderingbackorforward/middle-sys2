@@ -278,11 +278,13 @@ def video_add():
 
 @app.get("/api/stream/<topic>")
 def stream_topic(topic):
+    print("[sse] subscribe topic=", topic)
     def event_stream(q):
         yield "event: heartbeat\ndata: ok\n\n"
         while True:
             item = q.get()
             data = json.dumps(item, ensure_ascii=False)
+            print("[sse] send topic=", topic, "payload_len=", len(data))
             yield f"event: message\ndata: {data}\n\n"
     q = sse_hub.subscribe(topic)
     return Response(event_stream(q), mimetype="text/event-stream")
@@ -290,12 +292,14 @@ def stream_topic(topic):
 @app.post("/api/dev/push-risk")
 def dev_push_risk():
     body = request.get_json(silent=True) or {}
+    print("[dev_push_risk] payload=", body)
     sse_hub.broadcast("tunnel-risk", "risk", body)
     return jsonify({"ok": True})
 
 @app.post("/api/dev/push-sensors")
 def dev_push_sensors():
     body = request.get_json(silent=True) or {}
+    print("[dev_push_sensors] payload=", body)
     sse_hub.broadcast("sensors", "sensor", body)
     return jsonify({"ok": True})
 
@@ -333,6 +337,8 @@ def ai_deepseek():
     prompt = body.get("prompt", "")
     system_instruction = body.get("systemInstruction", "")
     api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    print("[ai_deepseek] recv len=", len(prompt), "sys=", bool(system_instruction))
+    print("[ai_deepseek] has_key=", bool(api_key))
     if not api_key:
         return jsonify({"error": "DEEPSEEK_API_KEY not set"}), 500
     try:
@@ -347,8 +353,12 @@ def ai_deepseek():
             text = resp.choices[0].message.content or ""
         except Exception:
             pass
+        print("[ai_deepseek] ok text preview=", (text or "")[:120])
         return jsonify({"text": text})
     except Exception as e:
+        import traceback
+        print("[ai_deepseek] error=", str(e))
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 502
 
 @app.get("/api/health")
