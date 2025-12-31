@@ -29,7 +29,7 @@ const GuidanceMonitor: React.FC = () => {
     <div className="flex flex-col h-full gap-4">
       {/* Top Radar Section */}
       <div className="flex-[2] tech-card relative overflow-hidden flex flex-col">
-        <h3 className="text-lg font-bold text-tech-blue mb-2 border-l-4 border-tech-blue pl-2 tracking-wider">转向监测</h3>
+        <h3 className="text-lg font-bold text-tech-blue mb-2 border-l-4 border-tech-blue pl-2 tracking-wider">数字盾构</h3>
         
         {/* Radar Container */}
         <div className="flex-1 relative flex items-center justify-center bg-gradient-to-b from-[#0b1525] to-[#050a15]">
