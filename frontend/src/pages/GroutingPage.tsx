@@ -264,7 +264,7 @@ const GroutingPage = () => {
         {/* Mock Top Status Bar (reuse from DigitalShield or simplified) */}
         <div className="flex items-center justify-between bg-[#0f172a]/80 border border-blue-900/50 p-2 rounded px-6 shrink-0">
              <div className="flex gap-4 text-sm text-gray-300">
-                <span>数字盾构 - 注浆系统</span>
+                <span>导向监测 - 注浆系统</span>
                 <span className="text-cyan-400">当前环: 4213</span>
              </div>
              <div className="text-xs text-green-400 border border-green-500/30 px-2 rounded">在线</div>
