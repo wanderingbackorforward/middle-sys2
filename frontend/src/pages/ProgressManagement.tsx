@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
 import ReactECharts from 'echarts-for-react';
 
-const ProgressManagement: React.FC = () => {
+const ProgressManagement = () => {
   const [stats, setStats] = useState<any>(null);
   const [gantt, setGantt] = useState<any[]>([]);
   const [dailyRings, setDailyRings] = useState<any[]>([]);

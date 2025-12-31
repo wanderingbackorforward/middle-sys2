@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
@@ -12,7 +12,7 @@ interface PersonnelStats {
   managers: number;
 }
 
-const PersonnelManagement: React.FC = () => {
+const PersonnelManagement = () => {
   const [stats, setStats] = useState<PersonnelStats | null>(null);
   const [distribution, setDistribution] = useState<any[]>([]);
   const [list, setList] = useState<any[]>([]);

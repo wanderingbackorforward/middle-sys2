@@ -1,8 +1,8 @@
-import React from 'react';
+ 
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 
-const MainLayout: React.FC = () => {
+const MainLayout = () => {
   return (
     <div className="min-h-screen w-full h-screen flex flex-col bg-[#0b1120] overflow-hidden">
       {/* Background Grid Effect */}

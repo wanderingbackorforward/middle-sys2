@@ -1,6 +1,4 @@
-import React from 'react';
-
-const GroutingSystem: React.FC = () => {
+const GroutingSystem = () => {
   return (
     <div className="p-4">
       <div className="tech-card">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
@@ -16,7 +16,7 @@ interface DashboardSummary {
   gasAlerts: number;
 }
 
-const SafetyDashboard: React.FC = () => {
+const SafetyDashboard = () => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [supplies, setSupplies] = useState<any>(null);

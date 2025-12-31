@@ -1,6 +1,4 @@
-import React from 'react';
-
-const MapLanding: React.FC = () => {
+const MapLanding = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000' }}>
       <iframe

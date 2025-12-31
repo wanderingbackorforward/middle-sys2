@@ -1,6 +1,4 @@
-import React from 'react';
-
-const GroutingPage: React.FC = () => {
+const GroutingPage = () => {
   return (
     <div className="p-6">
       <div className="tech-card animate-fadeIn">

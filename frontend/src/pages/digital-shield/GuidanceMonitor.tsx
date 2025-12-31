@@ -1,6 +1,4 @@
-import React from 'react';
-
-const GuidanceMonitor: React.FC = () => {
+const GuidanceMonitor = () => {
   return (
     <div className="p-4">
       <div className="tech-card">

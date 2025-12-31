@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import axios from 'axios';
 import { connectSSE } from '../utils/sse';
 
-const SafetyManagement: React.FC = () => {
+const SafetyManagement = () => {
   const [risks, setRisks] = useState<any[]>([]);
   const [settlement, setSettlement] = useState<any>(null);
   const [score, setScore] = useState<number>(0);

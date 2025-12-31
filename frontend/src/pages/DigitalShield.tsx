@@ -1,6 +1,4 @@
-import React from 'react';
-
-const DigitalShield: React.FC = () => {
+const DigitalShield = () => {
   return (
     <div className="p-6">
       <div className="tech-card animate-fadeIn">

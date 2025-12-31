@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import VideoTile from '../components/VideoTile';
 
-const VideoMonitoring: React.FC = () => {
+const VideoMonitoring = () => {
   const [videos, setVideos] = useState<any[]>([]);
 
   useEffect(() => {
