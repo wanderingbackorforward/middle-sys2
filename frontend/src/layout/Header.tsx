@@ -16,10 +16,11 @@ const Header: React.FC = () => {
     { label: '人员管理', path: '/personnel' },
     { label: '安全管理', path: '/safety' },
     { label: '视频监控', path: '/video' },
-    { label: '进度管理', path: '/progress' },
-    { label: '数字盾构', path: '/digital-shield' },
-    { label: '灌浆系统', path: '/grouting' },
-  ];
+     { label: '进度管理', path: '/progress' },
+     { label: '导向监测', path: '/digital-shield' },
+     { label: '注浆系统', path: '/grouting' },
+     { label: '掘进监测', path: '/tunneling' },
+   ];
   
 
 
