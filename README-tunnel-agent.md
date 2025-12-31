@@ -1,7 +1,7 @@
 # 隧道风险管控智能体集成说明
 
 ## 环境变量
-- `GEMINI_API_KEY`: 用于后端代理调用 Google Generative Language API。
+- `GEMINI_API_KEY`: 用于后端代理调用 Google Generative Language API。请不要将真实密钥写入代码库，使用环境变量方式配置。
 - 可选：`USE_SUPABASE=1` 与 `SUPABASE_URL`、`SUPABASE_SERVICE_KEY` 以启用真实数据读取。
 
 ## 后端运行
@@ -13,6 +13,14 @@
   - `GET /api/stream/<topic>`：SSE订阅，主题包括 `tunnel-risk` 与 `sensors`。
   - `POST /api/dev/push-risk`：开发演示推送风险事件到 `tunnel-risk`。
   - `POST /api/dev/push-sensors`：开发演示推送传感器数据到 `sensors`。
+
+### Windows PowerShell 环境变量示例
+- 设置密钥（仅当前终端会话有效）：
+  - `$env:GEMINI_API_KEY='sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx'`
+- 关闭调度器以免额外依赖：
+  - `$env:DISABLE_SCHEDULER='1'`
+  
+如需长期配置，请在系统“环境变量”中添加，或在部署平台的“项目环境变量”中设置。
 
 ## 前端运行
 - 目录：`frontend`
