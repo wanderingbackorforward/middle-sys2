@@ -39,9 +39,30 @@ const callGemini = async (prompt: string, systemInstruction = ''): Promise<strin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, systemInstruction })
     });
-    if (!resp.ok) throw new Error('AI service failed');
-    const data = await resp.json();
-    return data.text || '智能体响应异常，请稍后重试。';
+    if (resp.ok) {
+      const data = await resp.json();
+      const t = data?.text;
+      if (t && typeof t === 'string') return t;
+    }
+  } catch {}
+  const key = (import.meta as any).env?.VITE_PUBLIC_GEMINI_KEY;
+  if (!key) return '连接大模型服务失败，请检查网络或配额。';
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+        })
+      }
+    );
+    if (!r.ok) throw new Error('API Call Failed');
+    const data = await r.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return text || '智能体响应异常，请稍后重试。';
   } catch {
     return '连接大模型服务失败，请检查网络或配额。';
   }

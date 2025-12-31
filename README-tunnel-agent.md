@@ -30,6 +30,11 @@
   - `/tunnel-agent` 风险智能体
   - 顶部导航已新增“风险智能体”入口
 
+### 前端直连 AI 的回退配置
+- 如后端暂不可用，可通过 `VITE_PUBLIC_GEMINI_KEY` 让前端直连大模型：
+  - 在 `frontend/.env` 中设置：`VITE_PUBLIC_GEMINI_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+  - 注意：此为公开变量，构建产物会包含该值，请仅在可控环境使用。
+
 ## 联调演示
 - 推送风险事件示例：
   - `POST http://localhost:8081/api/dev/push-risk`，Body: `{"type":"gas"}`
