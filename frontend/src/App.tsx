@@ -7,6 +7,7 @@ import VideoMonitoring from './pages/VideoMonitoring';
 import ProgressManagement from './pages/ProgressManagement';
 import MapLanding from './pages/MapLanding';
 import DigitalShield from './pages/DigitalShield';
+import GroutingPage from './pages/GroutingPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="video" element={<VideoMonitoring />} />
           <Route path="progress" element={<ProgressManagement />} />
           <Route path="digital-shield" element={<DigitalShield />} />
+          <Route path="grouting" element={<GroutingPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
