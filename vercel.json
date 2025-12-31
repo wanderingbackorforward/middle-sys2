@@ -20,6 +20,8 @@
   "env": {
     "SUPABASE_URL": "https://komlrqbghyirkykmibrx.supabase.co",
     "SUPABASE_SERVICE_KEY": "sb_publishable_dN2XxFgARaq_7RhBo-3E4w_cEOzwz56",
-    "USE_SUPABASE": "1"
+    "USE_SUPABASE": "1",
+    "DEEPSEEK_API_KEY": "__SET_IN_VERCEL_DASHBOARD__",
+    "VITE_PUBLIC_DEEPSEEK_KEY": ""
   }
 }
