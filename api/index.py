@@ -4,10 +4,9 @@ import json
 import datetime
 import requests
 
-# keep backend app for other routes
+# defer backend import to avoid module import errors when optional deps are missing
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend-flask'))
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
-from app import app as backend_app
 
 def _json_response(start_response, status_code, obj):
     start_response(f"{status_code} {'OK' if status_code==200 else 'Error'}", [("Content-Type", "application/json")])
@@ -119,4 +118,5 @@ def app(environ, start_response):
         })
 
     # Fallback to original backend app for any other routes
+    from app import app as backend_app
     return backend_app(environ, start_response)
