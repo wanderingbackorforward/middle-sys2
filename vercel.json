@@ -3,9 +3,9 @@
     { "src": "frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
     { "src": "api/ai/deepseek.ts", "use": "@vercel/node" }
   ],
-  "routes": [
-    { "src": "/api/ai/deepseek", "dest": "api/ai/deepseek.ts" },
-    { "src": "/(.*)", "dest": "/frontend/dist/index.html" }
+  "rewrites": [
+    { "source": "/api/ai/deepseek", "destination": "/api/ai/deepseek" },
+    { "source": "/(.*)", "destination": "/" }
   ],
   "env": {
     "SUPABASE_URL": "https://komlrqbghyirkykmibrx.supabase.co",
