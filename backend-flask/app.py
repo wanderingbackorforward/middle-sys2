@@ -1,5 +1,7 @@
 import os
 import json
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
@@ -283,6 +285,46 @@ def stream_topic(topic):
             yield f"event: message\ndata: {data}\n\n"
     q = sse_hub.subscribe(topic)
     return Response(event_stream(q), mimetype="text/event-stream")
+
+@app.post("/api/dev/push-risk")
+def dev_push_risk():
+    body = request.get_json(silent=True) or {}
+    sse_hub.broadcast("tunnel-risk", "risk", body)
+    return jsonify({"ok": True})
+
+@app.post("/api/dev/push-sensors")
+def dev_push_sensors():
+    body = request.get_json(silent=True) or {}
+    sse_hub.broadcast("sensors", "sensor", body)
+    return jsonify({"ok": True})
+
+@app.post("/api/ai/gemini")
+def ai_gemini():
+    body = request.get_json(silent=True) or {}
+    prompt = body.get("prompt", "")
+    system_instruction = body.get("systemInstruction", "")
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "GEMINI_API_KEY not set"}), 500
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    if system_instruction:
+        payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={api_key}"
+    try:
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        text = (
+            (data.get("candidates") or [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("text", "")
+        )
+        return jsonify({"text": text})
+    except urllib.error.HTTPError as e:
+        return jsonify({"error": f"HTTP {e.code}"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
 
 @app.get("/api/health")
 def health():

@@ -20,6 +20,7 @@ const Header: React.FC = () => {
      { label: '导向监测', path: '/digital-shield' },
      { label: '注浆系统', path: '/grouting' },
      { label: '掘进监测', path: '/tunneling' },
+     { label: '风险智能体', path: '/tunnel-agent' },
    ];
   
 

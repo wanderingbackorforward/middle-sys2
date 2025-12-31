@@ -9,6 +9,7 @@ import MapLanding from './pages/MapLanding';
 import DigitalShield from './pages/DigitalShield';
 import GroutingPage from './pages/GroutingPage';
 import TunnelingPage from './pages/TunnelingPage';
+import TunnelRiskAgent from './pages/TunnelRiskAgent';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="digital-shield" element={<DigitalShield />} />
           <Route path="grouting" element={<GroutingPage />} />
           <Route path="tunneling" element={<TunnelingPage />} />
+          <Route path="tunnel-agent" element={<TunnelRiskAgent />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -93,3 +93,42 @@
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.blink {
+  animation: blink 1s step-start infinite;
+}
+
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #0ea5b7;
+  border-radius: 3px;
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(-2%); }
+  50% { transform: translateY(2%); }
+}
+.animate-bounce-slow {
+  animation: bounceSlow 2.5s ease-in-out infinite;
+}
