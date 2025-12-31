@@ -17,6 +17,7 @@ USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY and os.getenv("USE_SUP
 if os.getenv("DISABLE_SCHEDULER", "0") != "1":
     from scheduler import start_scheduler
     start_scheduler(supa, sse_hub)
+video_store = []
 
 def fmt_time_str(iso):
     try:
@@ -244,11 +245,33 @@ def safety_verify():
 
 @app.get("/api/video/list")
 def video_list():
-    return jsonify([
-        {"id": "cam-01", "name": "盾构机前方", "status": "在线", "img": ""},
-        {"id": "cam-02", "name": "管片拼装区", "status": "在线", "img": ""},
-        {"id": "cam-03", "name": "注浆站", "status": "离线", "img": ""}
-    ])
+    demo = os.getenv("DEMO_STREAM", "1") == "1"
+    data = [
+        {"id": "cam-01", "name": "盾构机前方", "status": "在线"},
+        {"id": "cam-02", "name": "管片拼装区", "status": "在线"},
+        {"id": "cam-03", "name": "注浆站", "status": "在线"}
+    ]
+    if demo:
+        streams = [
+            "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+            "https://test-streams.mux.dev/pts/stream.m3u8",
+            "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8"
+        ]
+        for i, s in enumerate(data):
+            s["streamUrl"] = streams[i % len(streams)]
+    return jsonify(data + video_store)
+
+@app.post("/api/video/add")
+def video_add():
+    body = request.get_json(silent=True) or {}
+    name = body.get("name") or f"摄像头{len(video_store)+1}"
+    url = body.get("streamUrl") or ""
+    status = body.get("status") or "在线"
+    if not url:
+        return jsonify({"error":"streamUrl required"}), 400
+    item = {"id": f"cam-{len(video_store)+11}", "name": name, "status": status, "streamUrl": url}
+    video_store.append(item)
+    return jsonify({"ok": True, "item": item})
 
 @app.get("/api/stream/<topic>")
 def stream_topic(topic):
