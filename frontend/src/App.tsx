@@ -17,9 +17,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/landing" element={<MapLanding />} />
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Navigate to="/landing" replace />} />
+          <Route index element={<Navigate to="landing" replace />} />
+          <Route path="landing" element={<MapLanding />} />
           <Route path="dashboard" element={<SafetyDashboard />} />
           <Route path="personnel" element={<PersonnelManagement />} />
           <Route path="safety" element={<SafetyManagement />} />
@@ -31,6 +31,7 @@ function App() {
           <Route path="tunnel-agent" element={<TunnelRiskAgent />} />
           <Route path="agent-safety-policy" element={<AgentSafetyPolicy />} />
           <Route path="agent-dispatch" element={<AgentDispatch />} />
+          <Route path="*" element={<Navigate to="landing" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
