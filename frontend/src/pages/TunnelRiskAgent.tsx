@@ -6,22 +6,15 @@ import {
   Wind,
   Anchor,
   Eye,
-  Truck,
-  HardHat,
-  Thermometer,
-  Droplets,
-  Box,
-  Radio,
-  Terminal,
-  GitBranch,
-  PlayCircle,
-  CheckCircle2,
   Cpu,
   Bot,
   MessageSquare,
   X,
   Send,
-  Loader2
+  Loader2,
+  Terminal,
+  GitBranch,
+  CheckCircle2
 } from 'lucide-react';
 import {
   AreaChart,
@@ -148,72 +141,16 @@ const generateSensorData = (length: number, base: number, variance: number) => {
   }));
 };
 
-const VisionSimView: React.FC<{ zone: string; risk: any }> = ({ zone, risk }) => {
-  const isRisky =
-    risk && ((risk.type === 'personnel' && zone === 'segment') || (risk.type === 'vehicle' && zone === 'logistics'));
 
-  return (
-    <div className="relative w-full h-full bg-black rounded-lg overflow-hidden border border-slate-700 group">
-      <div
-        className={`absolute inset-0 bg-cover bg-center opacity-40 transition-all duration-500 ${isRisky ? 'grayscale-0' : 'grayscale'
-          }`}
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1590247813693-5541d1c609fd?q=80&w=2000&auto=format&fit=crop')`
-        }}
-      ></div>
-      <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(6,182,212,0.1)_50%)] bg-[size:100%_4px] pointer-events-none"></div>
-      {isRisky && <div className="absolute inset-0 bg-red-900/20 animate-pulse pointer-events-none"></div>}
-
-      <div className="absolute top-4 left-4 flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-xs font-mono text-red-500 font-bold">REC ●</span>
-          <span className="text-xs font-mono text-slate-300">CAM-0{zone === 'segment' ? '2' : '4'} | {zone.toUpperCase()}</span>
-        </div>
-      </div>
-
-      {isRisky ? (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.6)] flex flex-col items-center justify-end pb-2 animate-bounce-slow">
-          <div className="absolute -top-6 left-0 bg-red-600 text-white text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">
-            {risk.type === 'personnel' ? 'DETECTED: HUMAN' : 'DETECTED: VEHICLE'}
-          </div>
-          <div className="text-red-500 font-mono text-xs bg-black/70 px-2 py-1">
-            {risk.type === 'personnel' ? '未穿戴反光衣 / 距离过近' : '车辆超速 / 路径入侵'}
-          </div>
-          <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-red-500"></div>
-          <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-red-500"></div>
-          <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-red-500"></div>
-          <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-red-500"></div>
-        </div>
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="border border-cyan-500/30 w-64 h-48 rounded flex items-center justify-center">
-            <span className="text-cyan-500/50 text-xs font-mono">Scanning Area...</span>
-          </div>
-        </div>
-      )}
-
-      <div className="absolute bottom-0 inset-x-0 bg-slate-900/80 p-2 flex justify-between border-t border-slate-700">
-        <div className="flex gap-4 text-xs font-mono text-slate-400">
-          <span>FPS: 24</span>
-          <span>LATENCY: 12ms</span>
-          <span>AI MODEL: YOLO-v8-TUNNEL</span>
-        </div>
-        {isRisky && <span className="text-xs font-bold text-red-500 blink">RISK IDENTIFIED</span>}
-      </div>
-    </div>
-  );
-};
 
 const TunnelRiskAgent: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<'normal' | 'warning' | 'critical'>('normal');
-  const [activeZone, setActiveZone] = useState<'cutter' | 'segment' | 'logistics'>('segment');
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [agentState, setAgentState] = useState<'idle' | 'detecting' | 'thinking' | 'deciding' | 'executing'>('idle');
   const [agentLogs, setAgentLogs] = useState<Array<{ id: number; message: string; type: 'info' | 'warning' | 'critical' | 'success' }>>([]);
-  const [decisionPlan, setDecisionPlan] = useState<Array<{ step: number; action: string; auto: boolean }>>([]);
+  const [decisionPlan, setDecisionPlan] = useState<Array<{ step: number; action: string; auto: boolean; reason: string }>>([]);
 
   const [gasData, setGasData] = useState(generateSensorData(20, 0.05, 0.02));
   const [pressureData, setPressureData] = useState(generateSensorData(20, 2.5, 0.3));
@@ -356,7 +293,7 @@ const TunnelRiskAgent: React.FC = () => {
         metrics: { distance: '0.8m (阈值 2.0m)', confidence: '98.5%' }
       };
       sensorData = { distance: 0.8, threshold: 2.0, confidence: 98.5 };
-      setActiveZone('segment');
+      sensorData = { distance: 0.8, threshold: 2.0, confidence: 98.5 };
     } else if (type === 'gas') {
       riskDetails = {
         id: `RISK-${Date.now()}`,
@@ -369,7 +306,7 @@ const TunnelRiskAgent: React.FC = () => {
         metrics: { ch4: '0.92% (阈值 0.5%)', trend: '极速上升' }
       };
       sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising' };
-      setActiveZone('cutter');
+      sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising' };
     } else if (type === 'vehicle') {
       riskDetails = {
         id: `RISK-${Date.now()}`,
@@ -382,7 +319,7 @@ const TunnelRiskAgent: React.FC = () => {
         metrics: { speed: '15km/h', proximity: '3.5m' }
       };
       sensorData = { speed: 15, proximity: 3.5 };
-      setActiveZone('logistics');
+      sensorData = { speed: 15, proximity: 3.5 };
     }
 
     setActiveRisk(riskDetails);
@@ -613,169 +550,131 @@ const TunnelRiskAgent: React.FC = () => {
             </div>
           </Card>
         </div>
-        <div className="col-span-12 lg:col-span-6 flex flex-col gap-4">
-          <Card title="盾构施工数字孪生场景" icon={Eye} className="flex-1 relative p-0 overflow-hidden" alertLevel={systemStatus === 'critical' ? 'critical' : 'normal'}>
-            <div className="absolute top-4 left-0 right-0 z-20 flex justify-center gap-2">
-              {[
-                { id: 'cutter', label: '刀盘/掘进区', icon: Radio },
-                { id: 'segment', label: '管片拼装区', icon: HardHat },
-                { id: 'logistics', label: '后配套物流', icon: Truck }
-              ].map(zone => (
-                <button
-                  key={zone.id}
-                  onClick={() => setActiveZone(zone.id as 'cutter' | 'segment' | 'logistics')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all backdrop-blur-md border ${activeZone === zone.id
-                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                    : 'bg-slate-900/60 border-slate-600 text-slate-400 hover:border-slate-400'
-                    }`}
-                >
-                  <zone.icon size={12} />
-                  {zone.label}
-                  {activeRisk && activeRisk.location.includes(zone.label.substring(0, 2)) && (
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className="absolute inset-0 pt-14 pb-4 px-4 bg-slate-950">
-              <div className="h-full w-full grid grid-rows-3 gap-2">
-                <div className="row-span-2 relative">
-                  <VisionSimView zone={activeZone} risk={activeRisk} />
-                  {activeRisk &&
-                    activeZone === (activeRisk.type === 'gas' ? 'cutter' : activeRisk.type === 'personnel' ? 'segment' : 'logistics') && (
-                      <div className="absolute bottom-4 right-4 bg-red-950/90 border border-red-500 p-3 rounded shadow-xl max-w-xs animate-in slide-in-from-right">
-                        <div className="flex items-center gap-2 mb-1 text-red-400 font-bold text-sm">
-                          <AlertTriangle size={14} />
-                          <span>智能研判：风险触发</span>
-                        </div>
-                        <p className="text-xs text-red-100 mb-2">{activeRisk.title}</p>
-                        <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-300">
-                          <div className="bg-black/30 p-1 rounded">置信度: 99.2%</div>
-                          <div className="bg-black/30 p-1 rounded">响应时间: 0.4s</div>
-                        </div>
-                      </div>
-                    )}
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-slate-900 border border-slate-700 rounded p-2 flex flex-col justify-center items-center">
-                    <Thermometer className="text-cyan-500 mb-1" size={16} />
-                    <span className="text-[10px] text-slate-500">环境温度</span>
-                    <span className="text-sm font-mono text-white">28.4°C</span>
-                  </div>
-                  <div className="bg-slate-900 border border-slate-700 rounded p-2 flex flex-col justify-center items-center">
-                    <Droplets className="text-blue-500 mb-1" size={16} />
-                    <span className="text-[10px] text-slate-500">湿度</span>
-                    <span className="text-sm font-mono text-white">76%</span>
-                  </div>
-                  <div className="bg-slate-900 border border-slate-700 rounded p-2 flex flex-col justify-center items-center">
-                    <Box className="text-purple-500 mb-1" size={16} />
-                    <span className="text-[10px] text-slate-500">本环进度</span>
-                    <span className="text-sm font-mono text-white">85%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-        <div className="col-span-12 lg:col-span-3 flex flex-col gap-4">
+
+        {/* 右侧区域放大为主体 (占9列) */}
+        <div className="col-span-12 lg:col-span-9 flex flex-col gap-4">
           <Card title="智能风险管控中心" icon={AlertTriangle} className="h-full flex flex-col" alertLevel={activeRisk ? 'critical' : 'normal'}>
             {agentState !== 'idle' ? (
-              <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="bg-black/40 border border-slate-700 rounded p-3 mb-4 h-1/3 flex flex-col font-mono overflow-hidden">
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 border-b border-slate-800 pb-1 mb-2">
-                    <Terminal size={10} />
-                    AGENT_LOGS
-                    {agentState === 'thinking' && <span className="animate-pulse text-cyan-400">● PROCESSING</span>}
-                  </div>
-                  <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
-                    {agentLogs.map((log, idx) => (
-                      <div key={log.id} className={`text-[10px] flex gap-2 animate-in fade-in slide-in-from-left-2`}>
-                        <span className="text-slate-600">[{new Date(log.id).toLocaleTimeString([], { hour12: false })}]</span>
-                        <span
-                          className={`${log.type === 'warning'
-                            ? 'text-yellow-400'
-                            : log.type === 'critical'
-                              ? 'text-red-400'
-                              : log.type === 'success'
-                                ? 'text-green-400'
-                                : 'text-slate-300'
-                            }`}
-                        >
-                          {idx === agentLogs.length - 1 && agentState !== 'executing' ? '> ' : ''}
-                          {log.message}
-                        </span>
-                      </div>
-                    ))}
-                    <div ref={logsEndRef} />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto mb-2 relative">
-                  {decisionPlan.length > 0 ? (
-                    <div className="space-y-3 animate-in zoom-in-95 duration-500">
-                      <div className="flex justify-between items-center">
-                        <h5 className="text-cyan-400 text-xs font-bold uppercase flex items-center gap-1">
-                          <GitBranch size={12} /> 自动生成管控策略
-                        </h5>
-                        <span className="text-[9px] bg-cyan-900/50 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-700">SOP匹配度 99%</span>
-                      </div>
-                      {decisionPlan.map((plan, idx) => (
-                        <div
-                          key={idx}
-                          className="flex gap-3 items-start bg-slate-800/60 p-3 rounded border-l-2 border-cyan-500 shadow-lg transform transition-all duration-500"
-                          style={{ animationDelay: `${idx * 200}ms` }}
-                        >
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-cyan-600 text-white shadow-[0_0_10px_rgba(8,145,178,0.5)]">
-                            {plan.step}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs font-bold text-slate-100">{plan.action}</p>
-                            <div className="flex gap-2 mt-1">
-                              {plan.auto && (
-                                <span className="text-[9px] text-cyan-400 flex items-center gap-0.5">
-                                  <Cpu size={8} /> 自动执行
-                                </span>
-                              )}
-                              {!plan.auto && (
-                                <span className="text-[9px] text-yellow-400 flex items-center gap-0.5">
-                                  <PlayCircle size={8} /> 等待人工确认
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {plan.auto && <CheckCircle2 size={14} className="text-green-500 ml-auto animate-in fade-in duration-500" />}
+              <div className="flex h-full gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
+
+                {/* 左半部分：日志与决策 (占40%) */}
+                <div className="w-[40%] flex flex-col gap-4">
+                  <div className="bg-black/40 border border-slate-700 rounded p-3 h-1/2 flex flex-col font-mono overflow-hidden">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 border-b border-slate-800 pb-1 mb-2">
+                      <Terminal size={10} />
+                      AGENT_LOGS
+                      {agentState === 'thinking' && <span className="animate-pulse text-cyan-400">● PROCESSING</span>}
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
+                      {agentLogs.map((log, idx) => (
+                        <div key={log.id} className={`text-[10px] flex gap-2 animate-in fade-in slide-in-from-left-2`}>
+                          <span className="text-slate-600">[{new Date(log.id).toLocaleTimeString([], { hour12: false })}]</span>
+                          <span
+                            className={`${log.type === 'warning'
+                              ? 'text-yellow-400'
+                              : log.type === 'critical'
+                                ? 'text-red-400'
+                                : log.type === 'success'
+                                  ? 'text-green-400'
+                                  : 'text-slate-300'
+                              }`}
+                          >
+                            {idx === agentLogs.length - 1 && agentState !== 'executing' ? '> ' : ''}
+                            {log.message}
+                          </span>
                         </div>
                       ))}
+                      <div ref={logsEndRef} />
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-cyan-500/30 animate-pulse">
-                      <Cpu size={48} className="opacity-20" />
-                      <span className="absolute mt-16 text-xs">正在计算最优决策...</span>
-                    </div>
-                  )}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto relative bg-slate-900/30 p-2 rounded border border-slate-800">
+                    {decisionPlan.length > 0 ? (
+                      <div className="space-y-3 animate-in zoom-in-95 duration-500">
+                        <div className="flex justify-between items-center mb-2">
+                          <h5 className="text-cyan-400 text-sm font-bold uppercase flex items-center gap-1">
+                            <GitBranch size={14} /> 自动生成管控策略
+                          </h5>
+                        </div>
+                        {decisionPlan.map((plan, idx) => (
+                          <div
+                            key={idx}
+                            className="flex gap-3 items-start bg-slate-800/80 p-3 rounded border-l-4 border-cyan-500 shadow-lg transform transition-all duration-500 hover:bg-slate-800"
+                            style={{ animationDelay: `${idx * 200}ms` }}
+                          >
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-cyan-600 text-white shadow-[0_0_10px_rgba(8,145,178,0.5)]">
+                              {plan.step}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-slate-100 mb-1">{plan.action}</p>
+                              <p className="text-[10px] text-slate-400">{plan.reason}</p>
+                            </div>
+                            {plan.auto && <CheckCircle2 size={16} className="text-green-500 ml-auto animate-in fade-in duration-500" />}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-cyan-500/30 animate-pulse">
+                        <Cpu size={48} className="opacity-20" />
+                        <span className="absolute mt-16 text-xs">正在计算最优决策...</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-auto">
+
+                {/* 右半部分：深度简报 (占60%，作为主角) */}
+                <div className="flex-1 flex flex-col">
                   {isAnalyzing && !aiAnalysis && (
-                    <div className="bg-indigo-950/30 border border-indigo-500/30 rounded p-3 flex items-center gap-2">
-                      <Loader2 className="animate-spin text-indigo-400" size={14} />
-                      <span className="text-[11px] text-indigo-300">智能体正在生成深度简报...</span>
+                    <div className="h-full flex items-center justify-center bg-indigo-950/20 border border-indigo-500/30 rounded">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="animate-spin text-indigo-400" size={32} />
+                        <span className="text-sm text-indigo-300 font-bold tracking-wider animate-pulse">智能体正在生成深度简报...</span>
+                      </div>
                     </div>
                   )}
                   {aiAnalysis && (
-                    <div className="bg-indigo-950/30 border border-indigo-500/30 rounded p-3 max-h-40 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-5">
-                      <div className="flex items-center gap-2 mb-2 sticky top-0 bg-slate-900/0 backdrop-blur-sm pb-1">
-                        <Bot size={14} className="text-indigo-400" />
-                        <span className="text-xs font-bold text-indigo-300">智能体深度简报</span>
+                    <div className="h-full bg-indigo-950/20 border border-indigo-500/30 rounded p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-5 shadow-[inset_0_0_20px_rgba(79,70,229,0.1)]">
+                      <div className="flex items-center gap-3 mb-6 border-b border-indigo-500/30 pb-3">
+                        <div className="bg-indigo-500/20 p-2 rounded text-indigo-400">
+                          <Bot size={24} />
+                        </div>
+                        <span className="text-xl font-black text-indigo-100 tracking-wider">智能体深度简报</span>
+                        <span className="ml-auto text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">AI GENERATED</span>
                       </div>
-                      <p className="text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">{aiAnalysis}</p>
+
+                      <div className="prose prose-invert prose-lg max-w-none">
+                        {/* 简单的 Markdown 渲染替代方案 */}
+                        {aiAnalysis.split('\n').map((line, i) => {
+                          if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-cyan-300 mt-4 mb-2">{line.replace('### ', '')}</h3>;
+                          if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-blue-300 mt-6 mb-3 border-l-4 border-blue-500 pl-3">{line.replace('## ', '')}</h2>;
+                          if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-white mt-6 mb-4">{line.replace('# ', '')}</h1>;
+                          if (line.startsWith('- ')) return <li key={i} className="text-slate-300 ml-4 list-disc marker:text-cyan-500 mb-1">{line.replace('- ', '')}</li>;
+                          if (line.startsWith('1. ')) return <li key={i} className="text-slate-300 ml-4 list-decimal marker:text-cyan-500 mb-1">{line.replace(/^\d+\. /, '')}</li>;
+                          if (line.trim() === '') return <br key={i} />;
+                          // 粗体渲染 **text**
+                          const parts = line.split(/(\*\*.*?\*\*)/g);
+                          return (
+                            <p key={i} className="text-base leading-relaxed text-slate-200 mb-2">
+                              {parts.map((part, j) => {
+                                if (part.startsWith('**') && part.endsWith('**')) {
+                                  return <strong key={j} className="text-white font-bold bg-white/10 px-1 rounded mx-0.5">{part.slice(2, -2)}</strong>;
+                                }
+                                return part;
+                              })}
+                            </p>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
+
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
-                <Shield size={48} className="mb-2" />
-                <p className="text-xs">当前无风险事件</p>
-                <p className="text-[10px]">智能体正在全域巡检中...</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50 bg-slate-900/30 rounded border border-slate-800/50 border-dashed">
+                <Shield size={64} className="mb-4 text-slate-700" />
+                <p className="text-lg font-bold text-slate-500">当前无风险事件</p>
+                <p className="text-sm font-mono mt-2">智能体正在全域巡检中...</p>
               </div>
             )}
           </Card>
