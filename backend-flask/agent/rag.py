@@ -1,10 +1,12 @@
 """
 RAG 知识库模块 - 安全规范与案例检索
 
-使用 Chroma 向量数据库存储盾构施工安全规范文档
+从 knowledge/ 目录动态加载 .txt/.md 文件
+支持 Chroma 向量检索或关键词匹配降级
 """
 
 import os
+import glob
 from pathlib import Path
 from typing import List, Optional
 
@@ -20,126 +22,141 @@ class KnowledgeBase:
     2. 关键词匹配模式 (降级方案)
     """
     
+    # 知识库目录路径（相对于当前文件）
+    KNOWLEDGE_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge")
+    
     def __init__(self, persist_dir: str = None):
         self.persist_dir = persist_dir or os.path.join(
-            os.path.dirname(__file__), "..", "knowledge", "vector_db"
+            self.KNOWLEDGE_DIR, "vector_db"
         )
         self._vectorstore = None
-        self._documents = self._load_builtin_docs()
+        self._documents = self._load_docs_from_directory()
     
-    def _load_builtin_docs(self) -> List[Document]:
-        """加载内置知识库文档"""
-        docs = [
-            # 瓦斯/气体相关规范
-            Document(
-                page_content="""【瓦斯浓度超限处置规范 SOP-GAS-001】
-                
-1. 立即响应措施：
-   - 当CH4浓度≥0.5%时，立即切断刀盘和螺旋机电源
-   - 启动隧道主风机强排模式，风量提升至100%
-   - 停止一切可能产生火花的作业
-   
-2. 人员撤离：
-   - 危险区域内人员沿安全通道有序撤离
-   - 撤离至风门以外安全区域
-   - 清点人数，确保无人滞留
-   
-3. 持续监测：
-   - 每5分钟记录一次气体浓度变化
-   - 浓度降至0.3%以下方可恢复作业
-   - 分析气体来源，排查地质异常""",
-                metadata={"source": "盾构施工安全规范", "category": "gas", "version": "2024"}
-            ),
+    def _load_docs_from_directory(self) -> List[Document]:
+        """
+        从 knowledge/ 目录加载所有 .txt 和 .md 文件
+        
+        文件命名约定（可选）:
+        - 文件名包含 'gas' -> category='gas'
+        - 文件名包含 'personnel' -> category='personnel'
+        - 文件名包含 'vehicle' -> category='vehicle'
+        - 其他 -> category='general'
+        """
+        docs = []
+        knowledge_path = Path(self.KNOWLEDGE_DIR)
+        
+        # 检查目录是否存在
+        if not knowledge_path.exists():
+            print(f"[KnowledgeBase] 警告: 知识库目录不存在: {knowledge_path}")
+            print(f"[KnowledgeBase] 请创建目录并放入 .txt 或 .md 文件")
+            return docs
+        
+        # 尝试使用 LangChain DirectoryLoader
+        try:
+            from langchain_community.document_loaders import DirectoryLoader, TextLoader
             
-            # 人员入侵相关规范
-            Document(
-                page_content="""【人员入侵危险区域处置规范 SOP-PERSONNEL-001】
-                
-1. 设备紧急制动：
-   - 立即触发拼装机/盾构机紧急停止
-   - 锁定所有移动设备
-   - 开启区域声光报警
-   
-2. 现场响应：
-   - 通知最近的安全员前往确认
-   - 推送实时画面至监控中心
-   - 记录入侵时间、位置、人员信息
-   
-3. 恢复作业条件：
-   - 确认危险区域无人员
-   - 安全员签字确认
-   - 解除设备锁定""",
-                metadata={"source": "盾构施工安全规范", "category": "personnel", "version": "2024"}
-            ),
-            
-            # 车辆碰撞相关规范
-            Document(
-                page_content="""【车辆防撞预警处置规范 SOP-VEHICLE-001】
-                
-1. 预警响应：
-   - 向超速/接近车辆发送减速指令
-   - 激活防撞雷达预警系统
-   - 锁定前方道岔系统
-   
-2. 交通管控：
-   - 临时封闭危险路段
-   - 引导车辆至临时停靠区
-   - 通知调度中心重新规划路线
-   
-3. 事后处理：
-   - 分析违规原因（超速/违规行驶）
-   - 对驾驶员进行安全教育
-   - 更新车辆调度系统黑名单""",
-                metadata={"source": "盾构施工安全规范", "category": "vehicle", "version": "2024"}
-            ),
-            
-            # 通用安全规范
-            Document(
-                page_content="""【盾构施工通用安全要求】
-                
-1. 作业前检查：
-   - 确认通风系统运行正常
-   - 检查气体监测设备状态
-   - 验证通讯系统畅通
-   
-2. 应急预案：
-   - 每月进行一次应急演练
-   - 明确各岗位职责和撤离路线
-   - 配备充足的应急物资
-   
-3. 监控要求：
-   - 关键区域实现24小时视频监控
-   - 传感器数据实时上传监控中心
-   - 异常情况自动触发报警""",
-                metadata={"source": "盾构施工安全规范", "category": "general", "version": "2024"}
-            ),
-            
-            # 历史案例
-            Document(
-                page_content="""【历史案例：2023年某地铁项目瓦斯突出事件】
-
-事件概述：
-- 掘进过程中遇到断层破碎带，瓦斯快速涌出
-- CH4浓度在3分钟内从0.1%升至1.2%
-
-处置过程：
-1. 自动检测系统触发报警（响应时间<2秒）
-2. 刀盘电源自动切断
-3. 风机自动切换至强排模式
-4. 12名作业人员在4分钟内全部撤离
-
-经验教训：
-- 穿越断层前应加强超前地质预报
-- 提前储备应急通风能力
-- 自动化响应系统有效降低人为延误""",
-                metadata={"source": "历史案例库", "category": "gas", "case_id": "CASE-2023-001"}
+            # 加载 .txt 文件
+            txt_loader = DirectoryLoader(
+                str(knowledge_path),
+                glob="**/*.txt",
+                loader_cls=TextLoader,
+                loader_kwargs={"encoding": "utf-8"},
+                show_progress=False,
+                use_multithreading=False
             )
-        ]
+            
+            # 加载 .md 文件
+            md_loader = DirectoryLoader(
+                str(knowledge_path),
+                glob="**/*.md",
+                loader_cls=TextLoader,
+                loader_kwargs={"encoding": "utf-8"},
+                show_progress=False,
+                use_multithreading=False
+            )
+            
+            # 合并加载结果
+            txt_docs = txt_loader.load()
+            md_docs = md_loader.load()
+            all_docs = txt_docs + md_docs
+            
+            # 为每个文档添加 category 元数据
+            for doc in all_docs:
+                source = doc.metadata.get("source", "").lower()
+                doc.metadata["category"] = self._infer_category(source)
+            
+            docs.extend(all_docs)
+            print(f"[KnowledgeBase] 成功加载 {len(docs)} 份文档 (DirectoryLoader)")
+            
+        except ImportError:
+            print("[KnowledgeBase] DirectoryLoader 不可用，使用原生文件读取")
+            docs = self._load_docs_native(knowledge_path)
+        except Exception as e:
+            print(f"[KnowledgeBase] DirectoryLoader 加载失败: {e}")
+            print("[KnowledgeBase] 尝试使用原生文件读取...")
+            docs = self._load_docs_native(knowledge_path)
+        
+        if not docs:
+            print(f"[KnowledgeBase] 警告: 未找到任何文档，请在以下目录放入 .txt 或 .md 文件:")
+            print(f"  {knowledge_path.absolute()}")
+        
         return docs
+    
+    def _load_docs_native(self, knowledge_path: Path) -> List[Document]:
+        """
+        原生文件读取（不依赖 LangChain loaders）
+        """
+        docs = []
+        
+        # 查找所有 .txt 和 .md 文件
+        patterns = ["**/*.txt", "**/*.md"]
+        
+        for pattern in patterns:
+            for file_path in knowledge_path.glob(pattern):
+                # 跳过 README 文件
+                if file_path.name.lower() == "readme.md":
+                    continue
+                
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                    if content.strip():  # 跳过空文件
+                        doc = Document(
+                            page_content=content,
+                            metadata={
+                                "source": str(file_path),
+                                "filename": file_path.name,
+                                "category": self._infer_category(file_path.name)
+                            }
+                        )
+                        docs.append(doc)
+                except Exception as e:
+                    print(f"[KnowledgeBase] 读取文件失败 {file_path}: {e}")
+        
+        print(f"[KnowledgeBase] 成功加载 {len(docs)} 份文档 (原生读取)")
+        return docs
+    
+    def _infer_category(self, filename: str) -> str:
+        """
+        根据文件名推断文档类别
+        """
+        filename_lower = filename.lower()
+        
+        if "gas" in filename_lower or "瓦斯" in filename_lower:
+            return "gas"
+        elif "personnel" in filename_lower or "人员" in filename_lower:
+            return "personnel"
+        elif "vehicle" in filename_lower or "车辆" in filename_lower:
+            return "vehicle"
+        else:
+            return "general"
     
     def _init_vectorstore(self):
         """初始化向量存储（懒加载）"""
         if self._vectorstore is not None:
+            return
+        
+        if not self._documents:
+            print("[KnowledgeBase] 无文档可索引，跳过向量库初始化")
             return
         
         try:
@@ -233,3 +250,9 @@ class KnowledgeBase:
             if cat:
                 categories.add(cat)
         return list(categories)
+    
+    def reload(self):
+        """重新加载知识库文档"""
+        self._documents = self._load_docs_from_directory()
+        self._vectorstore = None  # 重置向量库，下次搜索时重建
+        print(f"[KnowledgeBase] 重新加载完成，共 {len(self._documents)} 份文档")
