@@ -20,8 +20,13 @@ const Header: React.FC = () => {
      { label: '导向监测', path: '/digital-shield' },
      { label: '注浆系统', path: '/grouting' },
      { label: '掘进监测', path: '/tunneling' },
-     { label: '风险智能体', path: '/tunnel-agent' },
    ];
+  const agentItems = [
+    { label: '隧道风险智能体', path: '/tunnel-agent' },
+    { label: '安全策略智能体', path: '/agent-safety-policy' },
+    { label: '物资调度智能体', path: '/agent-dispatch' }
+  ];
+  const [showAgents, setShowAgents] = useState(false);
   
 
 
@@ -72,6 +77,33 @@ const Header: React.FC = () => {
                     <span className="relative z-10">{item.label}</span>
                 </button>
             ))}
+            <div className="relative">
+              <button
+                onClick={() => setShowAgents(v => !v)}
+                className={`relative px-8 py-2 text-sm font-bold transition-all duration-300 ${showAgents ? 'text-white' : 'text-blue-300 hover:text-white'}`}
+              >
+                <div
+                  className={`absolute inset-0 transform perspective-100 border-t border-r border-l border-blue-500/50 ${
+                    showAgents ? 'bg-blue-600/40 shadow-[0_0_15px_rgba(0,240,255,0.3)]' : 'bg-blue-900/20 hover:bg-blue-800/30'
+                  }`}
+                  style={{ clipPath: 'polygon(10% 0, 90% 0, 100% 100%, 0% 100%)' }}
+                ></div>
+                <span className="relative z-10">智能体</span>
+              </button>
+              {showAgents && (
+                <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-blue-900/70 border border-blue-500/50 rounded shadow-xl backdrop-blur-md z-50">
+                  {agentItems.map((a) => (
+                    <div
+                      key={a.path}
+                      className={`px-4 py-2 text-sm cursor-pointer ${location.pathname === a.path ? 'text-white bg-blue-800/40' : 'text-blue-200 hover:text-white hover:bg-blue-800/30'}`}
+                      onClick={() => { setShowAgents(false); navigate(a.path); }}
+                    >
+                      {a.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
         </div>
     </div>
   );

@@ -10,6 +10,8 @@ import DigitalShield from './pages/DigitalShield';
 import GroutingPage from './pages/GroutingPage';
 import TunnelingPage from './pages/TunnelingPage';
 import TunnelRiskAgent from './pages/TunnelRiskAgent';
+import AgentSafetyPolicy from './pages/AgentSafetyPolicy';
+import AgentDispatch from './pages/AgentDispatch';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
           <Route path="grouting" element={<GroutingPage />} />
           <Route path="tunneling" element={<TunnelingPage />} />
           <Route path="tunnel-agent" element={<TunnelRiskAgent />} />
+          <Route path="agent-safety-policy" element={<AgentSafetyPolicy />} />
+          <Route path="agent-dispatch" element={<AgentDispatch />} />
         </Route>
       </Routes>
     </BrowserRouter>
