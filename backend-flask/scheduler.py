@@ -86,8 +86,92 @@ def start_scheduler(supa, hub):
         else:
             hub.broadcast("safety", "safety.alarmTrend", {"ts": None, "value": 1})
 
+    # ================= 智能体自主监控任务 =================
+    
+    # 上次触发时间，避免过于频繁
+    last_trigger_ts = 0
+    
+    def monitor_risk_agent():
+        nonlocal last_trigger_ts
+        import time
+        import random
+        import os
+        
+        # 开关控制：默认开启，除非设置 DISABLE_AUTO_AGENT=1
+        if os.getenv("DISABLE_AUTO_AGENT", "0") == "1":
+            return
+
+        # 冷却时间检查 (例如至少间隔 60 秒)
+        now = time.time()
+        if now - last_trigger_ts < 60:
+            return
+
+        # 模拟随机触发 (20% 概率)
+        if random.random() > 0.2:
+            return
+
+        print("[Scheduler] ☁️ 智能体自主监控：检测到传感器数据异常，正在介入...")
+        
+        try:
+            from agent import run_agent
+            
+            # 随机生成一种风险场景
+            scenarios = [
+                {
+                    "type": "gas",
+                    "data": {"ch4": round(random.uniform(0.8, 1.5), 2), "trend": "rising"},
+                    "location": "回风管路 A1段"
+                },
+                {
+                    "type": "personnel",
+                    "data": {"distance": round(random.uniform(0.5, 1.5), 1), "confidence": 98.5},
+                    "location": "管片拼装区 B2段"
+                },
+                {
+                    "type": "vehicle",
+                    "data": {"speed": random.randint(15, 25), "proximity": 3.0},
+                    "location": "后配套物流通道"
+                }
+            ]
+            scenario = random.choice(scenarios)
+            
+            # 发送"正在分析"的信号
+            hub.broadcast("agent-status", "agent", {
+                "state": "detecting",
+                "message": f"监测到 {scenario['location']} 异常数据，智能体介入分析中..."
+            })
+            
+            # 运行智能体
+            result = run_agent(scenario["type"], scenario["data"], scenario["location"])
+            
+            # 广播分析结果
+            hub.broadcast("agent-status", "agent", {
+                "state": "completed",
+                "risk_type": scenario["type"],
+                "risk_level": result.get("risk_level"),
+                "plan_count": len(result.get("decision_plan", [])),
+                "auto_triggered": True, # 标记为自动触发
+                "result": {
+                     "analysis": result.get("analysis_result"),
+                     "decision_plan": result.get("decision_plan", []),
+                     "report": result.get("report", "")
+                }
+            })
+            
+            last_trigger_ts = now
+            print(f"[Scheduler] ✅ 智能体自主分析完成: {scenario['type']}")
+            
+        except Exception as e:
+            print(f"[Scheduler] ❌ 智能体监控任务异常: {e}")
+            import traceback
+            traceback.print_exc()
+
     scheduler.add_job(push_dashboard, "interval", seconds=2, max_instances=1)
     scheduler.add_job(push_personnel, "interval", seconds=3, max_instances=1)
     scheduler.add_job(push_progress, "interval", seconds=3, max_instances=1)
     scheduler.add_job(push_safety, "interval", seconds=4, max_instances=1)
+    
+    # 添加智能体监控任务 (每 10 秒轮询一次)
+    scheduler.add_job(monitor_risk_agent, "interval", seconds=10, max_instances=1)
+    
     scheduler.start()

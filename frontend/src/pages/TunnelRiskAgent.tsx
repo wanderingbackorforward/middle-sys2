@@ -243,6 +243,51 @@ const TunnelRiskAgent: React.FC = () => {
         if (t) triggerRiskScenario(t);
       }
     });
+
+    // 监听智能体自主监控频道
+    const disconnectAgent = connectSSE(apiUrl('/api/stream/agent'), {
+      'agent-status': (payload: any) => {
+        console.log('[SSE] agent-status recv:', payload);
+
+        // 自动触发处理
+        if (payload.auto_triggered && payload.state === 'completed') {
+          const result = payload.result || {};
+          const riskType = payload.risk_type;
+
+          // 构造风险详情对象
+          const newRisk = {
+            id: `AUTO-${Date.now()}`,
+            type: riskType,
+            title: riskType === 'gas' ? '瓦斯浓度异常 (自动监测)' :
+              riskType === 'personnel' ? '人员入侵告警 (自动监测)' : '车辆违规预警 (自动监测)',
+            location: '监测区域 (AI识别)',
+            level: payload.risk_level || '判定中',
+            detectedBy: '智能体自主监控系统',
+            timestamp: new Date().toLocaleTimeString(),
+            metrics: { info: '后台自动触发' }
+          };
+
+          setActiveRisk(newRisk);
+          setSystemStatus('critical');
+
+          if (result.analysis) setAiAnalysis(result.analysis);
+
+          // 解析决策方案
+          const plan = result.decision_plan || [];
+          setDecisionPlan(plan.map((p: any, idx: number) => ({
+            step: p.step || idx + 1,
+            action: p.action || '',
+            auto: p.auto !== false,
+            reason: p.reason || ''
+          })));
+
+          setAgentState('executing');
+          addAgentLog(`[自主监控] 检测到风险，智能体已自动介入`, 'critical');
+          addAgentLog(`[报告] ${newRisk.title} - 处置方案已生成`, 'success');
+        }
+      }
+    });
+
     const disconnectSensors = connectSSE(apiUrl('/api/stream/sensors'), {
       sensor: (payload: any) => {
         const g = Number(payload?.gas);
@@ -263,6 +308,7 @@ const TunnelRiskAgent: React.FC = () => {
     });
     return () => {
       disconnectRisk();
+      disconnectAgent();
       disconnectSensors();
     };
   }, []);
