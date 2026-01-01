@@ -34,7 +34,7 @@ def fmt_ts_value(rows):
 
 @app.get("/api/dashboard/summary")
 def dashboard_summary():
-    latest = supa.get_list("summary", limit=1)
+    latest = supa.get_list("summary", limit=1, ttl=10)
     base = {
         "projectName": "隧道监测项目",
         "lat": 31.2304,
@@ -59,7 +59,7 @@ def dashboard_summary():
 
 @app.get("/api/dashboard/notifications")
 def dashboard_notifications():
-    rows = supa.get_list("notifications", order="ts.desc", limit=30) if USE_SUPABASE else []
+    rows = supa.get_list("notifications", order="ts.desc", limit=30, ttl=8) if USE_SUPABASE else []
     result = [{"time": fmt_time_str(r.get("ts", "")), "type": r.get("type", ""), "content": r.get("content", "")} for r in rows]
     if not result:
         now = datetime.now().strftime("%H:%M:%S")
@@ -72,7 +72,7 @@ def dashboard_notifications():
 
 @app.get("/api/dashboard/supplies")
 def dashboard_supplies():
-    rows = supa.get_list("supplies", order="category.asc", limit=100) if USE_SUPABASE else []
+    rows = supa.get_list("supplies", order="category.asc", limit=100, ttl=15) if USE_SUPABASE else []
     result = {}
     for r in rows:
         k = r.get("category")
@@ -85,7 +85,7 @@ def dashboard_supplies():
 
 @app.get("/api/dashboard/dispatch")
 def dashboard_dispatch():
-    rows = supa.get_list("dispatch", order="ts.desc", limit=50) if USE_SUPABASE else []
+    rows = supa.get_list("dispatch", order="ts.desc", limit=50, ttl=8) if USE_SUPABASE else []
     result = [{"time": fmt_time_str(r.get("ts", "")), "type": r.get("type", ""), "unit": r.get("unit", ""), "status": r.get("status", "")} for r in rows]
     if not result:
         now = datetime.now().strftime("%H:%M:%S")
@@ -98,9 +98,9 @@ def dashboard_dispatch():
 @app.get("/api/dashboard/timeseries")
 def dashboard_timeseries():
     if USE_SUPABASE:
-        advance = fmt_ts_value(supa.get_list("advance_speed", order="ts.asc", limit=300))
-        slurry = fmt_ts_value(supa.get_list("slurry_pressure", order="ts.asc", limit=300))
-        gas = fmt_ts_value(supa.get_list("gas_concentration", order="ts.asc", limit=300))
+        advance = fmt_ts_value(supa.get_list("advance_speed", order="ts.asc", limit=300, ttl=10))
+        slurry = fmt_ts_value(supa.get_list("slurry_pressure", order="ts.asc", limit=300, ttl=10))
+        gas = fmt_ts_value(supa.get_list("gas_concentration", order="ts.asc", limit=300, ttl=10))
     else:
         advance, slurry, gas = [], [], []
     if not advance:
@@ -116,7 +116,7 @@ def dashboard_timeseries():
 
 @app.get("/api/personnel/stats")
 def personnel_stats():
-    latest = supa.get_list("stats", limit=1)
+    latest = supa.get_list("stats", limit=1, ttl=10)
     if latest:
         r = latest[0]
         return jsonify({
@@ -145,7 +145,7 @@ def personnel_list():
 
 @app.get("/api/personnel/attendanceTrend")
 def personnel_attendance_trend():
-    rows = supa.get_list("attendance_trend", order="ts.asc", limit=300) if USE_SUPABASE else []
+    rows = supa.get_list("attendance_trend", order="ts.asc", limit=300, ttl=10) if USE_SUPABASE else []
     series = fmt_ts_value(rows)
     if not series:
         base = datetime.now(timezone.utc)
@@ -154,7 +154,7 @@ def personnel_attendance_trend():
 
 @app.get("/api/progress/stats")
 def progress_stats():
-    latest = supa.get_list("stats_progress", limit=1)
+    latest = supa.get_list("stats_progress", limit=1, ttl=10)
     if latest:
         r = latest[0]
         return jsonify({
@@ -176,7 +176,7 @@ def progress_gantt():
 
 @app.get("/api/progress/dailyRings")
 def progress_daily_rings():
-    rows = supa.get_list("daily_rings", order="ts.asc", limit=300) if USE_SUPABASE else []
+    rows = supa.get_list("daily_rings", order="ts.asc", limit=300, ttl=10) if USE_SUPABASE else []
     series = fmt_ts_value(rows)
     if not series:
         base = datetime.now(timezone.utc)
@@ -185,7 +185,7 @@ def progress_daily_rings():
 
 @app.get("/api/safety/risks")
 def safety_risks():
-    rows = supa.get_list("risks", order="ts.desc", limit=100) if USE_SUPABASE else []
+    rows = supa.get_list("risks", order="ts.desc", limit=100, ttl=10) if USE_SUPABASE else []
     result = []
     for r in rows:
         result.append({
@@ -208,8 +208,8 @@ def safety_risks():
 @app.get("/api/safety/settlement")
 def safety_settlement():
     if USE_SUPABASE:
-        actual = fmt_ts_value(supa.get_list("settlement_actual", order="ts.asc", limit=300))
-        predict = fmt_ts_value(supa.get_list("settlement_predict", order="ts.asc", limit=300))
+        actual = fmt_ts_value(supa.get_list("settlement_actual", order="ts.asc", limit=300, ttl=10))
+        predict = fmt_ts_value(supa.get_list("settlement_predict", order="ts.asc", limit=300, ttl=10))
     else:
         actual, predict = [], []
     if not actual:
@@ -226,7 +226,7 @@ def safety_score():
 
 @app.get("/api/safety/alarmTrend")
 def safety_alarm_trend():
-    rows = supa.get_list("alarm_trend", order="ts.asc", limit=300) if USE_SUPABASE else []
+    rows = supa.get_list("alarm_trend", order="ts.asc", limit=300, ttl=10) if USE_SUPABASE else []
     series = fmt_ts_value(rows)
     if not series:
         base = datetime.now(timezone.utc)
@@ -235,10 +235,10 @@ def safety_alarm_trend():
 
 @app.get("/api/safety/verify")
 def safety_verify():
-    a_count = supa.count("settlement_actual")
-    r_count = supa.count("risks")
-    sample_actual = supa.get_list("settlement_actual", limit=1)
-    sample_risk = supa.get_list("risks", limit=1)
+    a_count = supa.count("settlement_actual", ttl=5)
+    r_count = supa.count("risks", ttl=5)
+    sample_actual = supa.get_list("settlement_actual", limit=1, ttl=5)
+    sample_risk = supa.get_list("risks", limit=1, ttl=5)
     return jsonify({
         "settlement_actual_count": a_count,
         "risks_count": r_count,

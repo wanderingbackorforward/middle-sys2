@@ -4,9 +4,9 @@ def start_scheduler(supa, hub):
     scheduler = BackgroundScheduler()
 
     def push_dashboard():
-        a = supa.get_list("advance_speed", limit=1)
-        s = supa.get_list("slurry_pressure", limit=1)
-        g = supa.get_list("gas_concentration", limit=1)
+        a = supa.get_list("advance_speed", limit=1, ttl=3)
+        s = supa.get_list("slurry_pressure", limit=1, ttl=3)
+        g = supa.get_list("gas_concentration", limit=1, ttl=3)
         if a:
             hub.broadcast("dashboard", "dashboard.advanceSpeed", {"ts": a[0].get("ts"), "value": a[0].get("value")})
         else:
@@ -19,7 +19,7 @@ def start_scheduler(supa, hub):
             hub.broadcast("dashboard", "dashboard.gasConcentration", {"ts": g[0].get("ts"), "value": g[0].get("value")})
         else:
             hub.broadcast("dashboard", "dashboard.gasConcentration", {"ts": None, "value": 0.1})
-        summary = supa.get_list("summary", limit=1)
+        summary = supa.get_list("summary", limit=1, ttl=3)
         if summary:
             row = summary[0]
             hub.broadcast("dashboard", "dashboard.summary", {
@@ -33,12 +33,12 @@ def start_scheduler(supa, hub):
             })
 
     def push_personnel():
-        a = supa.get_list("attendance_trend", limit=1)
+        a = supa.get_list("attendance_trend", limit=1, ttl=3)
         if a:
             hub.broadcast("personnel", "personnel.attendanceTrend", {"ts": a[0].get("ts"), "value": a[0].get("value")})
         else:
             hub.broadcast("personnel", "personnel.attendanceTrend", {"ts": None, "value": 85})
-        stats = supa.get_list("stats", limit=1)
+        stats = supa.get_list("stats", limit=1, ttl=3)
         if stats:
             r = stats[0]
             hub.broadcast("personnel", "personnel.stats", {
@@ -51,12 +51,12 @@ def start_scheduler(supa, hub):
             hub.broadcast("personnel", "personnel.stats", {"totalOnSite": 48, "attendanceRate": "92%", "violations": 0, "managers": 6})
 
     def push_progress():
-        d = supa.get_list("daily_rings", limit=1)
+        d = supa.get_list("daily_rings", limit=1, ttl=3)
         if d:
             hub.broadcast("progress", "progress.dailyRings", {"ts": d[0].get("ts"), "value": d[0].get("value")})
         else:
             hub.broadcast("progress", "progress.dailyRings", {"ts": None, "value": 4})
-        stats = supa.get_list("stats_progress", limit=1)
+        stats = supa.get_list("stats_progress", limit=1, ttl=3)
         if stats:
             r = stats[0]
             hub.broadcast("progress", "progress.stats", {
@@ -70,8 +70,8 @@ def start_scheduler(supa, hub):
             hub.broadcast("progress", "progress.stats", {"totalRings": 130, "totalGoal": 240, "dailyRings": 4, "remainingDays": 28, "value": 54})
 
     def push_safety():
-        a = supa.get_list("settlement_actual", limit=1)
-        p = supa.get_list("settlement_predict", limit=1)
+        a = supa.get_list("settlement_actual", limit=1, ttl=3)
+        p = supa.get_list("settlement_predict", limit=1, ttl=3)
         if a:
             hub.broadcast("safety", "safety.settlement.actual", {"ts": a[0].get("ts"), "value": a[0].get("value")})
         else:
@@ -80,7 +80,7 @@ def start_scheduler(supa, hub):
             hub.broadcast("safety", "safety.settlement.predict", {"ts": p[0].get("ts"), "value": p[0].get("value")})
         else:
             hub.broadcast("safety", "safety.settlement.predict", {"ts": None, "value": 1.2})
-        alarm = supa.get_list("alarm_trend", limit=1)
+        alarm = supa.get_list("alarm_trend", limit=1, ttl=3)
         if alarm:
             hub.broadcast("safety", "safety.alarmTrend", {"ts": alarm[0].get("ts"), "value": alarm[0].get("value")})
         else:
