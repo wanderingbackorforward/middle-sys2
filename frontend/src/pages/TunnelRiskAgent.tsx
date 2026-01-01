@@ -48,7 +48,7 @@ const callGemini = async (prompt: string, systemInstruction = ''): Promise<strin
       if (t && typeof t === 'string') return t;
     }
     console.warn('[ai] backend resp not ok status=', resp.status);
-  } catch {}
+  } catch { }
   const key = (import.meta as any).env?.VITE_PUBLIC_DEEPSEEK_KEY;
   if (!key) return '连接大模型服务失败，请检查网络或配额。';
   try {
@@ -90,51 +90,45 @@ const Card: React.FC<{
     alertLevel === 'critical'
       ? 'border-red-600/60'
       : alertLevel === 'warning'
-      ? 'border-yellow-500/60'
-      : 'border-blue-800/50';
+        ? 'border-yellow-500/60'
+        : 'border-blue-800/50';
   const glowColor =
     alertLevel === 'critical'
       ? 'shadow-[0_0_20px_rgba(220,38,38,0.2)]'
       : alertLevel === 'warning'
-      ? 'shadow-[0_0_20px_rgba(234,179,8,0.2)]'
-      : '';
+        ? 'shadow-[0_0_20px_rgba(234,179,8,0.2)]'
+        : '';
 
   return (
     <div
       className={`bg-slate-900/80 border ${borderColor} ${glowColor} rounded-lg flex flex-col relative overflow-hidden backdrop-blur-md transition-all duration-500 ${className}`}
     >
       <div
-        className={`absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 ${
-          alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
-        }`}
+        className={`absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 ${alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
+          }`}
       ></div>
       <div
-        className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 ${
-          alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
-        }`}
+        className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 ${alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
+          }`}
       ></div>
       <div
-        className={`absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 ${
-          alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
-        }`}
+        className={`absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 ${alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
+          }`}
       ></div>
       <div
-        className={`absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 ${
-          alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
-        }`}
+        className={`absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 ${alertLevel === 'critical' ? 'border-red-500' : 'border-cyan-400/80'
+          }`}
       ></div>
 
       <div
-        className={`px-4 py-3 border-b ${borderColor} flex items-center justify-between bg-gradient-to-r ${
-          alertLevel === 'critical' ? 'from-red-900/20' : 'from-blue-900/20'
-        } to-transparent`}
+        className={`px-4 py-3 border-b ${borderColor} flex items-center justify-between bg-gradient-to-r ${alertLevel === 'critical' ? 'from-red-900/20' : 'from-blue-900/20'
+          } to-transparent`}
       >
         <div className="flex items-center gap-2">
           {Icon && <Icon size={18} className={alertLevel === 'critical' ? 'text-red-400' : 'text-cyan-400'} />}
           <h3
-            className={`font-bold tracking-wider text-sm uppercase ${
-              alertLevel === 'critical' ? 'text-red-100' : 'text-cyan-100'
-            }`}
+            className={`font-bold tracking-wider text-sm uppercase ${alertLevel === 'critical' ? 'text-red-100' : 'text-cyan-100'
+              }`}
           >
             {title}
           </h3>
@@ -161,9 +155,8 @@ const VisionSimView: React.FC<{ zone: string; risk: any }> = ({ zone, risk }) =>
   return (
     <div className="relative w-full h-full bg-black rounded-lg overflow-hidden border border-slate-700 group">
       <div
-        className={`absolute inset-0 bg-cover bg-center opacity-40 transition-all duration-500 ${
-          isRisky ? 'grayscale-0' : 'grayscale'
-        }`}
+        className={`absolute inset-0 bg-cover bg-center opacity-40 transition-all duration-500 ${isRisky ? 'grayscale-0' : 'grayscale'
+          }`}
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1590247813693-5541d1c609fd?q=80&w=2000&auto=format&fit=crop')`
         }}
@@ -294,15 +287,16 @@ const TunnelRiskAgent: React.FC = () => {
     setAgentLogs(prev => [...prev, { id: Date.now(), message, type }]);
   };
 
-  const triggerRiskScenario = (type: 'personnel' | 'gas' | 'vehicle') => {
+  const triggerRiskScenario = async (type: 'personnel' | 'gas' | 'vehicle') => {
     setSystemStatus('critical');
     setAiAnalysis(null);
     setAgentLogs([]);
     setDecisionPlan([]);
     setAgentState('detecting');
 
+    // 初始化风险详情
     let riskDetails: any = {};
-    let mockPlan: Array<{ step: number; action: string; auto: boolean }> = [];
+    let sensorData: any = {};
 
     if (type === 'personnel') {
       riskDetails = {
@@ -310,77 +304,115 @@ const TunnelRiskAgent: React.FC = () => {
         type: 'personnel',
         title: '人员入侵危险区域',
         location: '管片拼装区 B2段',
-        level: '高危 (I级)',
+        level: '',
         detectedBy: 'AI视觉识别相机 #04',
         timestamp: new Date().toLocaleTimeString(),
         metrics: { distance: '0.8m (阈值 2.0m)', confidence: '98.5%' }
       };
+      sensorData = { distance: 0.8, threshold: 2.0, confidence: 98.5 };
       setActiveZone('segment');
-      mockPlan = [
-        { step: 1, action: '立即停止拼装机动作 (Emergency Stop)', auto: true },
-        { step: 2, action: '区域声光报警开启', auto: true },
-        { step: 3, action: '推送实时画面至监控大屏', auto: true },
-        { step: 4, action: '通知班组长现场确认', auto: false }
-      ];
     } else if (type === 'gas') {
       riskDetails = {
         id: `RISK-${Date.now()}`,
         type: 'gas',
         title: '瓦斯浓度异常超限',
         location: '回风管路 A1段',
-        level: '危急 (特级)',
+        level: '',
         detectedBy: '多气体传感器组 G-12',
         timestamp: new Date().toLocaleTimeString(),
         metrics: { ch4: '0.92% (阈值 0.5%)', trend: '极速上升' }
       };
+      sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising' };
       setActiveZone('cutter');
-      mockPlan = [
-        { step: 1, action: '切断刀盘与螺旋机电源', auto: true },
-        { step: 2, action: '启动隧道主风机强排模式 (100%)', auto: true },
-        { step: 3, action: '撤离TBM全线人员至安全区', auto: false },
-        { step: 4, action: '持续监测气体消散速率', auto: true }
-      ];
     } else if (type === 'vehicle') {
       riskDetails = {
         id: `RISK-${Date.now()}`,
         type: 'vehicle',
         title: '车辆防撞预警',
         location: '后配套物流通道',
-        level: '中警 (II级)',
+        level: '',
         detectedBy: 'UWB定位 + 视觉融合',
         timestamp: new Date().toLocaleTimeString(),
         metrics: { speed: '15km/h', proximity: '3.5m' }
       };
+      sensorData = { speed: 15, proximity: 3.5 };
       setActiveZone('logistics');
-      mockPlan = [
-        { step: 1, action: '发送减速指令至车辆终端', auto: true },
-        { step: 2, action: '激活防撞预警雷达', auto: true },
-        { step: 3, action: '锁定道岔系统', auto: true }
-      ];
     }
 
     setActiveRisk(riskDetails);
     addAgentLog(`[感知层] 接收到 ${riskDetails.detectedBy} 异常信号`, 'warning');
-    addAgentLog(`[数据层] 聚合相关传感器数据... 完成`, 'info');
 
-    setTimeout(() => {
-      setAgentState('thinking');
-      addAgentLog(`[认知层] 正在分析风险特征: ${JSON.stringify(riskDetails.metrics)}`, 'info');
-      addAgentLog(`[知识库] 检索《盾构施工安全规范》及历史案例库...`, 'info');
-    }, 1000);
+    // 调用真实智能体 API
+    setAgentState('thinking');
+    addAgentLog(`[智能体] 正在调用 LangGraph 工作流...`, 'info');
 
-    setTimeout(() => {
+    try {
+      const response = await fetch(apiUrl('/api/agent/analyze'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          risk_type: type,
+          sensor_data: sensorData,
+          location: riskDetails.location
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API 响应错误: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || '智能体分析失败');
+      }
+
+      // 更新风险等级
+      riskDetails.level = result.risk_level || '未知';
+      setActiveRisk({ ...riskDetails });
+
+      // 显示真实的推理步骤
+      const steps = result.reasoning_steps || [];
+      for (const step of steps) {
+        const logType = step.message?.includes('风险等级') ? 'critical'
+          : step.message?.includes('生成') || step.message?.includes('完成') ? 'success'
+            : step.message?.includes('警告') ? 'warning' : 'info';
+        addAgentLog(step.message, logType as any);
+      }
+
+      // 设置智能体生成的决策方案
       setAgentState('deciding');
-      addAgentLog(`[决策层] 判定风险等级为: ${riskDetails.level}`, 'critical');
-      addAgentLog(`[策略层] 匹配到最佳处置预案 SOP-${type.toUpperCase()}-001`, 'success');
-    }, 2500);
+      const plan = result.decision_plan || [];
 
-    setTimeout(() => {
+      // 显示 RAG 检索结果
+      const docs = result.retrieved_docs || [];
+      if (docs.length > 0) {
+        addAgentLog(`[知识库] 检索到 ${docs.length} 条相关规范`, 'info');
+      }
+
       setAgentState('executing');
-      setDecisionPlan(mockPlan);
-      addAgentLog(`[执行层] 已生成 ${mockPlan.length} 条管控指令，准备执行`, 'success');
-      generateRiskReport(riskDetails, '风险已触发，请基于当前状态生成简报');
-    }, 3500);
+      setDecisionPlan(plan.map((p: any, idx: number) => ({
+        step: p.step || idx + 1,
+        action: p.action || '',
+        auto: p.auto !== false,
+        reason: p.reason || ''
+      })));
+      addAgentLog(`[执行层] 已生成 ${plan.length} 条管控指令`, 'success');
+
+      // 设置 AI 分析报告
+      if (result.report) {
+        setAiAnalysis(result.report);
+      }
+
+    } catch (error: any) {
+      console.error('[Agent] Error:', error);
+      addAgentLog(`[错误] ${error.message || '智能体调用失败'}`, 'critical');
+
+      // 降级：使用旧的 AI 问答方式
+      setAgentState('executing');
+      addAgentLog(`[降级] 使用简化模式生成处置建议...`, 'warning');
+      await generateRiskReport(riskDetails, '风险已触发，请基于当前状态生成简报');
+    }
   };
 
   const resetSystem = () => {
@@ -444,11 +476,10 @@ const TunnelRiskAgent: React.FC = () => {
         </div>
         <div className="flex items-center gap-6">
           <div
-            className={`px-3 py-1 rounded-full border flex items-center gap-2 text-xs font-bold transition-all duration-300 ${
-              systemStatus === 'normal'
-                ? 'bg-green-900/20 border-green-500/50 text-green-400'
-                : 'bg-red-900/20 border-red-500/50 text-red-500 animate-pulse'
-            }`}
+            className={`px-3 py-1 rounded-full border flex items-center gap-2 text-xs font-bold transition-all duration-300 ${systemStatus === 'normal'
+              ? 'bg-green-900/20 border-green-500/50 text-green-400'
+              : 'bg-red-900/20 border-red-500/50 text-red-500 animate-pulse'
+              }`}
           >
             <div className={`w-2 h-2 rounded-full ${systemStatus === 'normal' ? 'bg-green-500' : 'bg-red-500'}`}></div>
             {systemStatus === 'normal' ? 'SYSTEM SECURE' : 'RISK DETECTED'}
@@ -547,11 +578,10 @@ const TunnelRiskAgent: React.FC = () => {
                 <button
                   key={zone.id}
                   onClick={() => setActiveZone(zone.id as 'cutter' | 'segment' | 'logistics')}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all backdrop-blur-md border ${
-                    activeZone === zone.id
-                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                      : 'bg-slate-900/60 border-slate-600 text-slate-400 hover:border-slate-400'
-                  }`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all backdrop-blur-md border ${activeZone === zone.id
+                    ? 'bg-cyan-500/20 border-cyan-400 text-cyan-100 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                    : 'bg-slate-900/60 border-slate-600 text-slate-400 hover:border-slate-400'
+                    }`}
                 >
                   <zone.icon size={12} />
                   {zone.label}
@@ -616,15 +646,14 @@ const TunnelRiskAgent: React.FC = () => {
                       <div key={log.id} className={`text-[10px] flex gap-2 animate-in fade-in slide-in-from-left-2`}>
                         <span className="text-slate-600">[{new Date(log.id).toLocaleTimeString([], { hour12: false })}]</span>
                         <span
-                          className={`${
-                            log.type === 'warning'
-                              ? 'text-yellow-400'
-                              : log.type === 'critical'
+                          className={`${log.type === 'warning'
+                            ? 'text-yellow-400'
+                            : log.type === 'critical'
                               ? 'text-red-400'
                               : log.type === 'success'
-                              ? 'text-green-400'
-                              : 'text-slate-300'
-                          }`}
+                                ? 'text-green-400'
+                                : 'text-slate-300'
+                            }`}
                         >
                           {idx === agentLogs.length - 1 && agentState !== 'executing' ? '> ' : ''}
                           {log.message}
@@ -730,11 +759,10 @@ const TunnelRiskAgent: React.FC = () => {
               {chatHistory.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[85%] p-2 rounded-lg text-xs leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-cyan-700 text-white rounded-br-none'
-                        : 'bg-slate-800 text-slate-300 rounded-bl-none border border-slate-700'
-                    }`}
+                    className={`max-w-[85%] p-2 rounded-lg text-xs leading-relaxed ${msg.role === 'user'
+                      ? 'bg-cyan-700 text-white rounded-br-none'
+                      : 'bg-slate-800 text-slate-300 rounded-bl-none border border-slate-700'
+                      }`}
                   >
                     {msg.text}
                   </div>
@@ -757,9 +785,35 @@ const TunnelRiskAgent: React.FC = () => {
                 setChatInput('');
                 setChatHistory(prev => [...prev, { role: 'user', text: msg }]);
                 setIsChatThinking(true);
-                const prompt = `用户提问: \"${msg}\"。当前系统处于${systemStatus}状态。${
-                  activeRisk ? `正在处理${activeRisk.title}风险。` : ''
-                } 请简短回答。`;
+
+                try {
+                  // 优先使用 RAG 增强的智能体对话 API
+                  const resp = await fetch(apiUrl('/api/agent/chat'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      message: msg,
+                      context: {
+                        system_status: systemStatus,
+                        active_risk: activeRisk?.title || null
+                      }
+                    })
+                  });
+
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success && data.response) {
+                      setChatHistory(prev => [...prev, { role: 'model', text: data.response }]);
+                      setIsChatThinking(false);
+                      return;
+                    }
+                  }
+                } catch (err) {
+                  console.warn('[Chat] Agent API failed, falling back to direct LLM');
+                }
+
+                // 降级：使用直接 LLM 调用
+                const prompt = `用户提问: \"${msg}\"。当前系统处于${systemStatus}状态。${activeRisk ? `正在处理${activeRisk.title}风险。` : ''} 请简短回答。`;
                 const response = await callGemini(prompt);
                 setChatHistory(prev => [...prev, { role: 'model', text: response }]);
                 setIsChatThinking(false);

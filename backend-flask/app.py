@@ -361,6 +361,147 @@ def ai_deepseek():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 502
 
+# ============== 智能体 API ==============
+
+@app.post("/api/agent/analyze")
+def agent_analyze():
+    """触发智能体分析风险事件"""
+    body = request.get_json(silent=True) or {}
+    risk_type = body.get("risk_type", "")
+    sensor_data = body.get("sensor_data", {})
+    location = body.get("location", "")
+    
+    if not risk_type:
+        return jsonify({"error": "risk_type is required"}), 400
+    
+    try:
+        from agent import run_agent
+        result = run_agent(risk_type, sensor_data, location)
+        
+        # 广播智能体状态到 SSE
+        sse_hub.broadcast("agent-status", "agent", {
+            "state": "completed",
+            "risk_type": risk_type,
+            "risk_level": result.get("risk_level"),
+            "plan_count": len(result.get("decision_plan", []))
+        })
+        
+        return jsonify({
+            "success": True,
+            "risk_level": result.get("risk_level"),
+            "analysis": result.get("analysis_result"),
+            "decision_plan": result.get("decision_plan", []),
+            "retrieved_docs": result.get("retrieved_docs", []),
+            "reasoning_steps": result.get("reasoning_steps", []),
+            "report": result.get("report", "")
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.post("/api/agent/chat")
+def agent_chat():
+    """与智能体对话"""
+    body = request.get_json(silent=True) or {}
+    message = body.get("message", "")
+    context = body.get("context", {})
+    
+    if not message:
+        return jsonify({"error": "message is required"}), 400
+    
+    try:
+        from agent.rag import KnowledgeBase
+        
+        # 检索相关知识
+        kb = KnowledgeBase()
+        docs = kb.search(message, k=2)
+        context_text = "\n".join([d.page_content[:300] for d in docs])
+        
+        # 构建增强 prompt
+        system_instruction = f"""你是隧道施工安全智能助手。
+        
+参考知识库:
+{context_text}
+
+当前状态:
+- 系统状态: {context.get('system_status', 'normal')}
+- 活跃风险: {context.get('active_risk', '无')}
+
+请基于以上信息回答用户问题。"""
+        
+        # 调用 LLM
+        api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        if not api_key:
+            return jsonify({"error": "DEEPSEEK_API_KEY not set"}), 500
+        
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": message}
+            ],
+            stream=False
+        )
+        
+        text = resp.choices[0].message.content or ""
+        
+        return jsonify({
+            "success": True,
+            "response": text,
+            "retrieved_docs": [{"source": d.metadata.get("source", "")} for d in docs]
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.get("/api/agent/knowledge")
+def agent_knowledge():
+    """获取知识库信息"""
+    try:
+        from agent.rag import KnowledgeBase
+        kb = KnowledgeBase()
+        categories = kb.get_categories()
+        return jsonify({
+            "categories": categories,
+            "document_count": len(kb._documents)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.post("/api/agent/knowledge/search")
+def agent_knowledge_search():
+    """检索知识库"""
+    body = request.get_json(silent=True) or {}
+    query = body.get("query", "")
+    category = body.get("category", None)
+    k = body.get("k", 3)
+    
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    
+    try:
+        from agent.rag import KnowledgeBase
+        kb = KnowledgeBase()
+        docs = kb.search(query, k=k, category=category)
+        
+        results = []
+        for doc in docs:
+            results.append({
+                "content": doc.page_content,
+                "source": doc.metadata.get("source", ""),
+                "category": doc.metadata.get("category", "")
+            })
+        
+        return jsonify({
+            "found": len(results),
+            "documents": results
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.get("/api/health")
 def health():
     status = "ok"

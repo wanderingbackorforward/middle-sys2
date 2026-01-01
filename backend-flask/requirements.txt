@@ -4,3 +4,16 @@ requests==2.32.5
 apscheduler==3.11.2
 waitress==3.0.2
 python-dotenv==1.2.1
+openai>=1.10.0
+
+# LangChain + LangGraph 智能体框架
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.20
+langgraph>=0.0.20
+
+# RAG 向量数据库
+chromadb>=0.4.0
+
+# 文本嵌入 (可选本地模型)
+sentence-transformers>=2.2.0
