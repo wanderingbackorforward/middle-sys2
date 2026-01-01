@@ -628,12 +628,14 @@ const TunnelRiskAgent: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-12 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={gasData}>
-                      <Line type="monotone" dataKey="value" stroke={activeRisk?.type === 'gas' ? '#ef4444' : '#22c55e'} strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="threshold" stroke="#94a3b8" strokeDasharray="3 3" dot={false} strokeWidth={1} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {gasData && gasData.length > 0 && (
+                    <ResponsiveContainer key="gas-chart" width="100%" height="100%">
+                      <LineChart data={gasData}>
+                        <Line type="monotone" dataKey="value" stroke={activeRisk?.type === 'gas' ? '#ef4444' : '#22c55e'} strokeWidth={2} dot={false} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="threshold" stroke="#94a3b8" strokeDasharray="3 3" dot={false} strokeWidth={1} isAnimationActive={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
               <div className="space-y-1">
@@ -644,17 +646,19 @@ const TunnelRiskAgent: React.FC = () => {
                   <span className="font-mono text-cyan-400">{pressureData[pressureData.length - 1].value.toFixed(2)}</span>
                 </div>
                 <div className="h-12 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={pressureData}>
-                      <defs>
-                        <linearGradient id="colorPress" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill="url(#colorPress)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {pressureData && pressureData.length > 0 && (
+                    <ResponsiveContainer key="pressure-chart" width="100%" height="100%">
+                      <AreaChart data={pressureData}>
+                        <defs>
+                          <linearGradient id="colorPress" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="10%" stopColor="#06b6d4" stopOpacity={0.3} />
+                            <stop offset="90%" stopColor="#06b6d4" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill="url(#colorPress)" isAnimationActive={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>
