@@ -500,12 +500,161 @@ def agent_knowledge_search():
             "documents": results
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({\"error\": str(e)}), 500
 
-@app.get("/api/health")
+# ========== 历史报告与工单 API ==========
+
+@app.get(\"/api/agent/episodes\")
+def agent_episodes_list():
+    \"\"\"获取历史风险事件列表\"\"\"
+    limit = request.args.get(\"limit\", 20, type=int)
+    risk_type = request.args.get(\"risk_type\", None)
+    
+    try:
+        from agent.memory import get_memory
+        memory = get_memory()
+        
+        # 使用 Supabase 直接查询
+        if memory._client:
+            query_params = {\"select\": \"id,risk_type,risk_level,location,analysis_result,decision_plan,created_at,execution_status\", \"order\": \"created_at.desc\", \"limit\": str(limit)}
+            if risk_type:
+                query_params[\"risk_type\"] = f\"eq.{risk_type}\"
+            
+            import requests
+            url = f\"{memory._client.url}/rest/v1/agent_episodes\"
+            headers = {\"apikey\": memory._client.key, \"Authorization\": f\"Bearer {memory._client.key}\"}
+            r = requests.get(url, headers=headers, params=query_params, timeout=5)
+            
+            if r.status_code == 200:
+                episodes = r.json()
+                return jsonify({\"success\": True, \"episodes\": episodes, \"count\": len(episodes)})
+        
+        return jsonify({\"success\": True, \"episodes\": [], \"count\": 0, \"message\": \"Memory not available\"})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({\"error\": str(e)}), 500
+
+@app.get(\"/api/agent/episodes/<episode_id>\")
+def agent_episode_detail(episode_id):
+    \"\"\"获取单个事件详情\"\"\"
+    try:
+        from agent.memory import get_memory
+        memory = get_memory()
+        
+        if memory._client:
+            import requests
+            url = f\"{memory._client.url}/rest/v1/agent_episodes\"
+            headers = {\"apikey\": memory._client.key, \"Authorization\": f\"Bearer {memory._client.key}\"}
+            r = requests.get(url, headers=headers, params={\"id\": f\"eq.{episode_id}\"}, timeout=5)
+            
+            if r.status_code == 200:
+                data = r.json()
+                if data:
+                    return jsonify({\"success\": True, \"episode\": data[0]})
+                return jsonify({\"error\": \"Episode not found\"}), 404
+        
+        return jsonify({\"error\": \"Memory not available\"}), 500
+    except Exception as e:
+        return jsonify({\"error\": str(e)}), 500
+
+@app.post(\"/api/agent/work-order\")
+def create_work_order():
+    \"\"\"创建工单\"\"\"
+    body = request.get_json(silent=True) or {}
+    episode_id = body.get(\"episode_id\")
+    assignee = body.get(\"assignee\", \"未分配\")
+    priority = body.get(\"priority\", \"medium\")
+    notes = body.get(\"notes\", \"\")
+    
+    if not episode_id:
+        return jsonify({\"error\": \"episode_id is required\"}), 400
+    
+    try:
+        from agent.memory import get_memory
+        memory = get_memory()
+        
+        if memory._client:
+            import requests
+            from datetime import datetime, timezone
+            
+            url = f\"{memory._client.url}/rest/v1/work_orders\"
+            headers = {
+                \"apikey\": memory._client.key, 
+                \"Authorization\": f\"Bearer {memory._client.key}\",
+                \"Content-Type\": \"application/json\",
+                \"Prefer\": \"return=representation\"
+            }
+            payload = {
+                \"episode_id\": episode_id,
+                \"assignee\": assignee,
+                \"priority\": priority,
+                \"status\": \"open\",
+                \"notes\": notes
+            }
+            r = requests.post(url, headers=headers, json=payload, timeout=5)
+            
+            if r.status_code in [200, 201]:
+                result = r.json()
+                work_order_id = result[0][\"id\"] if result else None
+                return jsonify({\"success\": True, \"work_order_id\": work_order_id, \"status\": \"created\"})
+            else:
+                return jsonify({\"error\": f\"Supabase error: {r.text}\"}), 500
+        
+        return jsonify({\"error\": \"Memory not available\"}), 500
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({\"error\": str(e)}), 500
+
+@app.get(\"/api/agent/work-orders\")
+def list_work_orders():
+    \"\"\"获取工单列表\"\"\"
+    limit = request.args.get(\"limit\", 20, type=int)
+    status = request.args.get(\"status\", None)
+    
+    try:
+        from agent.memory import get_memory
+        memory = get_memory()
+        
+        if memory._client:
+            import requests
+            query_params = {\"select\": \"*\", \"order\": \"created_at.desc\", \"limit\": str(limit)}
+            if status:
+                query_params[\"status\"] = f\"eq.{status}\"
+            
+            url = f\"{memory._client.url}/rest/v1/work_orders\"
+            headers = {\"apikey\": memory._client.key, \"Authorization\": f\"Bearer {memory._client.key}\"}
+            r = requests.get(url, headers=headers, params=query_params, timeout=5)
+            
+            if r.status_code == 200:
+                return jsonify({\"success\": True, \"work_orders\": r.json()})
+        
+        return jsonify({\"success\": True, \"work_orders\": []})
+    except Exception as e:
+        return jsonify({\"error\": str(e)}), 500
+
+@app.get(\"/api/health\")
 def health():
-    status = "ok"
-    return jsonify({"status": status, "useSupabase": USE_SUPABASE})
+    status = \"ok\"
+    return jsonify({\"status\": status, \"useSupabase\": USE_SUPABASE})
 
+@app.get("/api/agent/work-orders/by-episode/<episode_id>")
+def list_work_orders_by_episode(episode_id):
+    limit = request.args.get("limit", 20, type=int)
+    try:
+        from agent.memory import get_memory
+        memory = get_memory()
+        if memory._client:
+            import requests
+            url = f"{memory._client.url}/rest/v1/work_orders"
+            headers = {"apikey": memory._client.key, "Authorization": f"Bearer {memory._client.key}"}
+            query_params = {"select": "*", "order": "created_at.desc", "limit": str(limit), "episode_id": f"eq.{episode_id}"}
+            r = requests.get(url, headers=headers, params=query_params, timeout=5)
+            if r.status_code == 200:
+                return jsonify({"success": True, "work_orders": r.json()})
+        return jsonify({"success": True, "work_orders": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, debug=False)

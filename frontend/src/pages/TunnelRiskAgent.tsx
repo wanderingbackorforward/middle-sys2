@@ -156,6 +156,13 @@ const TunnelRiskAgent: React.FC = () => {
   const [pressureData, setPressureData] = useState(generateSensorData(20, 2.5, 0.3));
 
   const [activeRisk, setActiveRisk] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'agent' | 'history'>('agent');
+  const [episodes, setEpisodes] = useState<Array<any>>([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [selectedEpisode, setSelectedEpisode] = useState<any>(null);
+  const [workOrdersForEpisode, setWorkOrdersForEpisode] = useState<Array<any>>([]);
+  const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [workOrderForm, setWorkOrderForm] = useState<{ assignee: string; priority: 'high' | 'medium' | 'low'; notes: string }>({ assignee: '', priority: 'medium', notes: '' });
 
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -213,6 +220,27 @@ const TunnelRiskAgent: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+  
+  useEffect(() => {
+    if (activeTab === 'history') {
+      const fetchEpisodes = async () => {
+        setEpisodesLoading(true);
+        try {
+          const resp = await fetch(apiUrl('/api/agent/episodes?limit=10'));
+          const data = await resp.json();
+          if (data?.success && Array.isArray(data.episodes)) {
+            setEpisodes(data.episodes);
+          } else {
+            setEpisodes([]);
+          }
+        } catch {
+          setEpisodes([]);
+        }
+        setEpisodesLoading(false);
+      };
+      fetchEpisodes();
+    }
+  }, [activeTab]);
 
   // 自动监测：当轮询发现数据超阈值时自动触发风险处理
   const autoTriggerRef = useRef(false); // 防止重复触发
@@ -468,6 +496,47 @@ const TunnelRiskAgent: React.FC = () => {
     setAiAnalysis(result);
     setIsAnalyzing(false);
   };
+  
+  const openEpisodeDetail = async (id: string) => {
+    setSelectedEpisode(null);
+    setWorkOrdersForEpisode([]);
+    try {
+      const resp = await fetch(apiUrl(`/api/agent/episodes/${id}`));
+      const data = await resp.json();
+      if (data?.success && data.episode) {
+        setSelectedEpisode(data.episode);
+      }
+    } catch {}
+    try {
+      const respWO = await fetch(apiUrl(`/api/agent/work-orders?limit=50`));
+      const dataWO = await respWO.json();
+      if (dataWO?.success && Array.isArray(dataWO.work_orders)) {
+        const list = dataWO.work_orders.filter((w: any) => w.episode_id === id);
+        setWorkOrdersForEpisode(list);
+      }
+    } catch {}
+  };
+  
+  const submitWorkOrder = async () => {
+    if (!selectedEpisode?.id) return;
+    try {
+      const resp = await fetch(apiUrl('/api/agent/work-order'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          episode_id: selectedEpisode.id,
+          assignee: workOrderForm.assignee || '未分配',
+          priority: workOrderForm.priority,
+          notes: workOrderForm.notes || ''
+        })
+      });
+      const data = await resp.json();
+      if (data?.success) {
+        setShowWorkOrderModal(false);
+        await openEpisodeDetail(selectedEpisode.id);
+      }
+    } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30 overflow-hidden relative">
@@ -500,6 +569,20 @@ const TunnelRiskAgent: React.FC = () => {
           </select>
         </div>
         <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('agent')}
+              className={`px-3 py-1 rounded text-xs font-bold border ${activeTab === 'agent' ? 'bg-cyan-600 text-white border-cyan-500' : 'bg-slate-800 text-slate-300 border-slate-700'}`}
+            >
+              智能管控
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3 py-1 rounded text-xs font-bold border ${activeTab === 'history' ? 'bg-cyan-600 text-white border-cyan-500' : 'bg-slate-800 text-slate-300 border-slate-700'}`}
+            >
+              历史记录
+            </button>
+          </div>
           <div
             className={`px-3 py-1 rounded-full border flex items-center gap-2 text-xs font-bold transition-all duration-300 ${systemStatus === 'normal'
               ? 'bg-green-900/20 border-green-500/50 text-green-400'
@@ -595,6 +678,93 @@ const TunnelRiskAgent: React.FC = () => {
 
         {/* 右侧区域放大为主体 (占9列) */}
         <div className="col-span-12 lg:col-span-9 flex flex-col gap-4">
+          {activeTab === 'history' && (
+            <Card title="历史风险事件记录" icon={AlertTriangle} className="h-full flex flex-row">
+              <div className="w-[35%] border-r border-slate-800 pr-3 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-slate-400">最近 10 条</span>
+                  {episodesLoading && <Loader2 className="animate-spin text-slate-500" size={14} />}
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {episodes.map((e) => (
+                    <button
+                      key={e.id}
+                      onClick={() => openEpisodeDetail(e.id)}
+                      className={`w-full text-left p-3 rounded border ${selectedEpisode?.id === e.id ? 'border-cyan-500 bg-cyan-900/10' : 'border-slate-700 bg-slate-800/40'} hover:bg-slate-800`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-cyan-300">{e.risk_type || '未知'}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded ${e.risk_level ? 'bg-yellow-900/30 text-yellow-400' : 'bg-slate-800 text-slate-400'}`}>{e.risk_level || '未评级'}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">{e.location || '-'}</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{new Date(e.created_at).toLocaleString()}</div>
+                      {workOrdersForEpisode.some(w => w.episode_id === e.id) && (
+                        <div className="mt-1 text-[10px] text-green-400 bg-green-900/30 inline-block px-1.5 rounded">已创建工单</div>
+                      )}
+                    </button>
+                  ))}
+                  {episodes.length === 0 && !episodesLoading && (
+                    <div className="text-xs text-slate-500">暂无历史记录</div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 pl-3 flex flex-col">
+                {!selectedEpisode ? (
+                  <div className="flex-1 flex items-center justify-center text-slate-600 opacity-50">选择左侧事件查看详情</div>
+                ) : (
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-cyan-200">{selectedEpisode.risk_type} · {selectedEpisode.location}</div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowWorkOrderModal(true)}
+                          className="px-3 py-1 rounded text-xs font-bold bg-cyan-600 text白 hover:bg-cyan-500"
+                        >
+                          转工单
+                        </button>
+                        {workOrdersForEpisode.length > 0 && (
+                          <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded">工单 {workOrdersForEpisode[0].status}</span>
+                        )}
+                      </div>
+                    </div>
+                    {selectedEpisode.analysis_result && (
+                      <div className="bg-indigo-950/20 border border-indigo-500/30 rounded p-3">
+                        <div className="text-xs font-bold text-indigo-300 mb-2">分析结果</div>
+                        <div className="text-sm text-slate-200">{selectedEpisode.analysis_result}</div>
+                      </div>
+                    )}
+                    {selectedEpisode.decision_plan && Array.isArray(selectedEpisode.decision_plan) && (
+                      <div className="bg-slate-800/50 border border-slate-700 rounded p-3">
+                        <div className="text-xs font-bold text-cyan-300 mb-2">决策方案</div>
+                        <div className="space-y-2">
+                          {selectedEpisode.decision_plan.map((p: any, idx: number) => (
+                            <div key={idx} className="flex gap-2 items-start">
+                              <div className="w-6 h-6 rounded-full bg-cyan-600 text白 flex items-center justify-center text-xs font-bold">{p.step || idx + 1}</div>
+                              <div className="flex-1">
+                                <div className="text-sm text-slate-100">{p.action || ''}</div>
+                                <div className="text-[10px] text-slate-400">{p.reason || ''}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {selectedEpisode.reasoning_steps && Array.isArray(selectedEpisode.reasoning_steps) && (
+                      <div className="bg-slate-800/30 border border-slate-700 rounded p-3">
+                        <div className="text-xs font-bold text-slate-300 mb-2">推理日志</div>
+                        <div className="space-y-1">
+                          {selectedEpisode.reasoning_steps.map((s: any, i: number) => (
+                            <div key={i} className="text-[10px] text-slate-300">• {s.message || s}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+          {activeTab === 'agent' && (
           <Card title="智能风险管控中心" icon={AlertTriangle} className="h-full flex flex-col" alertLevel={activeRisk ? 'critical' : 'normal'}>
             {agentState !== 'idle' ? (
               <div className="flex h-full gap-4 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -716,6 +886,7 @@ const TunnelRiskAgent: React.FC = () => {
               </div>
             )}
           </Card>
+          )}
         </div>
       </main>
 
@@ -817,6 +988,48 @@ const TunnelRiskAgent: React.FC = () => {
           </div>
         )}
       </div>
+      {showWorkOrderModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+          <div className="w-[420px] bg-slate-900 border border-slate-700 rounded-lg p-4">
+            <div className="text-sm font-bold text-slate-200 mb-3">创建工单</div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] text-slate-400 mb-1">指派人</div>
+                <input
+                  type="text"
+                  value={workOrderForm.assignee}
+                  onChange={e => setWorkOrderForm({ ...workOrderForm, assignee: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-400 mb-1">优先级</div>
+                <select
+                  value={workOrderForm.priority}
+                  onChange={e => setWorkOrderForm({ ...workOrderForm, priority: e.target.value as any })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="high">高</option>
+                  <option value="medium">中</option>
+                  <option value="low">低</option>
+                </select>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-400 mb-1">备注</div>
+                <textarea
+                  value={workOrderForm.notes}
+                  onChange={e => setWorkOrderForm({ ...workOrderForm, notes: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text白 focus:outline-none focus:border-cyan-500 h-20"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setShowWorkOrderModal(false)} className="px-3 py-1.5 text-xs rounded border border-slate-700 text-slate-300">取消</button>
+              <button onClick={submitWorkOrder} className="px-3 py-1.5 text-xs rounded bg-cyan-600 text-white hover:bg-cyan-500">提交</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
