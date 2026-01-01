@@ -1,21 +1,20 @@
 services:
   - type: web
-    name: tunnel-monitor-backend
-    runtime: java
-    runtimeVersion: 17
-    buildCommand: cd backend && ./mvnw clean package -DskipTests
-    startCommand: cd backend && java -jar target/tunnel-monitor-0.0.1-SNAPSHOT.jar
+    name: tunnel-monitor-flask-backend
+    runtime: python
+    buildCommand: pip install -r backend-flask/requirements.txt
+    startCommand: cd backend-flask && gunicorn app:app -k gthread -w 2 --threads 8 -b 0.0.0.0:$PORT
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: SERVER_PORT
-        value: 8080
-      - key: JAVA_OPTS
-        value: -Xmx512M -Xms256M
+      - key: USE_SUPABASE
+        value: "1"
       - key: SUPABASE_URL
-        value: https://komlrqbghyirkykmibrx.supabase.co
-      - key: SUPABASE_ANON_KEY
-        value: sb_publishable_dN2XxFgARaq_7RhBo-3E4w_cEOzwz56
-    healthCheckPath: /api/actuator/health
+        value: ""
+      - key: SUPABASE_SERVICE_KEY
+        value: ""
+      - key: DEEPSEEK_API_KEY
+        value: ""
+      - key: GEMINI_API_KEY
+        value: ""
+    healthCheckPath: /api/health
     autoDeploy: true
-    branch: master
+    branch: feat/vercel-render-migration
