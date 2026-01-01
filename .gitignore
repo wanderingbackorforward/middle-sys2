@@ -6,4 +6,10 @@ frontend/node_modules/
 frontend/dist/
 .DS_Store
 Thumbs.db
-frontend/public/data/
+frontend/.env.local
+**/__pycache__/
+*.pyc
+*.pyo
+*.log
+.trae/**
+frontend/public/data/**/*.json
