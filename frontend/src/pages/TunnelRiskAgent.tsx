@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId, memo } from 'react';
 import {
   Activity,
   Shield,
@@ -45,6 +45,36 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     return this.props.children as any;
   }
 }
+
+const GasChart: React.FC<{ data: Array<any>; isGasActive: boolean }> = memo(({ data, isGasActive }) => {
+  if (!data || data.length === 0) return null;
+  return (
+    <ResponsiveContainer key="gas-chart" width="100%" height="100%">
+      <LineChart data={data}>
+        <Line type="monotone" dataKey="value" stroke={isGasActive ? '#ef4444' : '#22c55e'} strokeWidth={2} dot={false} isAnimationActive={false} />
+        <Line type="monotone" dataKey="threshold" stroke="#94a3b8" strokeDasharray="3 3" dot={false} strokeWidth={1} isAnimationActive={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+});
+
+const PressureChart: React.FC<{ data: Array<any> }> = memo(({ data }) => {
+  const gradId = useId();
+  if (!data || data.length === 0) return null;
+  return (
+    <ResponsiveContainer key="pressure-chart" width="100%" height="100%">
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="10%" stopColor="#06b6d4" stopOpacity={0.3} />
+            <stop offset="90%" stopColor="#06b6d4" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill={`url(#${gradId})`} isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+});
 
 const callGemini = async (prompt: string, systemInstruction = ''): Promise<string> => {
   try {
@@ -628,14 +658,7 @@ const TunnelRiskAgent: React.FC = () => {
                   </span>
                 </div>
                 <div className="h-12 w-full">
-                  {gasData && gasData.length > 0 && (
-                    <ResponsiveContainer key="gas-chart" width="100%" height="100%">
-                      <LineChart data={gasData}>
-                        <Line type="monotone" dataKey="value" stroke={activeRisk?.type === 'gas' ? '#ef4444' : '#22c55e'} strokeWidth={2} dot={false} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="threshold" stroke="#94a3b8" strokeDasharray="3 3" dot={false} strokeWidth={1} isAnimationActive={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
+                  <GasChart data={gasData} isGasActive={activeRisk?.type === 'gas'} />
                 </div>
               </div>
               <div className="space-y-1">
@@ -646,19 +669,7 @@ const TunnelRiskAgent: React.FC = () => {
                   <span className="font-mono text-cyan-400">{pressureData[pressureData.length - 1].value.toFixed(2)}</span>
                 </div>
                 <div className="h-12 w-full">
-                  {pressureData && pressureData.length > 0 && (
-                    <ResponsiveContainer key="pressure-chart" width="100%" height="100%">
-                      <AreaChart data={pressureData}>
-                        <defs>
-                          <linearGradient id="colorPress" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="10%" stopColor="#06b6d4" stopOpacity={0.3} />
-                            <stop offset="90%" stopColor="#06b6d4" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <Area type="monotone" dataKey="value" stroke="#06b6d4" fillOpacity={1} fill="url(#colorPress)" isAnimationActive={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  )}
+                  <PressureChart data={pressureData} />
                 </div>
               </div>
             </div>
