@@ -1,8 +1,10 @@
  
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 
 const MainLayout = () => {
+  const location = useLocation();
+  const isLanding = location.pathname === '/landing';
   return (
     <div className="min-h-screen w-full h-screen flex flex-col bg-[#0b1120] overflow-hidden">
       {/* Background Grid Effect */}
@@ -10,8 +12,8 @@ const MainLayout = () => {
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 z-0"></div>
       
       <div className="relative z-10 flex flex-col h-full">
-        <Header />
-        <main className="flex-1 p-4 overflow-hidden">
+        {!isLanding && <Header />}
+        <main className={`flex-1 ${isLanding ? '' : 'p-4'} overflow-hidden`}>
             <Outlet />
         </main>
       </div>
