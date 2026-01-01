@@ -375,6 +375,54 @@ def agent_analyze():
         return jsonify({"error": "risk_type is required"}), 400
     
     try:
+        # 依赖与环境诊断
+        diagnostics = {
+            "deps": {"langchain_openai": False, "langgraph": False, "chromadb": False},
+            "keys": {"DEEPSEEK_API_KEY": bool(os.getenv("DEEPSEEK_API_KEY")), "OPENAI_API_KEY": bool(os.getenv("OPENAI_API_KEY"))},
+            "ready": False
+        }
+        try:
+            import langchain_openai  # type: ignore
+            diagnostics["deps"]["langchain_openai"] = True
+        except Exception:
+            pass
+        try:
+            import langgraph  # type: ignore
+            diagnostics["deps"]["langgraph"] = True
+        except Exception:
+            pass
+        try:
+            import chromadb  # type: ignore
+            diagnostics["deps"]["chromadb"] = True
+        except Exception:
+            pass
+        diagnostics["ready"] = all(diagnostics["deps"].values()) and (diagnostics["keys"]["DEEPSEEK_API_KEY"] or diagnostics["keys"]["OPENAI_API_KEY"])
+
+        if not diagnostics["ready"]:
+            # 返回降级结果避免 500
+            fallback_plan = [
+                {"step": 1, "action": "启动应急响应程序", "auto": True, "reason": "通用安全规范"},
+                {"step": 2, "action": "通知现场安全员并清点人员", "auto": True, "reason": "人员管理规定"},
+                {"step": 3, "action": "提高监测频率，持续记录关键参数", "auto": True, "reason": "监控要求"}
+            ]
+            sse_hub.broadcast("agent-status", "agent", {
+                "state": "completed",
+                "risk_type": risk_type,
+                "risk_level": "medium",
+                "plan_count": len(fallback_plan),
+                "degraded": True
+            })
+            return jsonify({
+                "success": True,
+                "risk_level": "medium",
+                "analysis": "依赖或密钥未就绪，返回降级处置方案。",
+                "decision_plan": fallback_plan,
+                "retrieved_docs": [],
+                "reasoning_steps": [],
+                "report": "",
+                "diagnostics": diagnostics
+            })
+
         from agent import run_agent
         result = run_agent(risk_type, sensor_data, location)
         

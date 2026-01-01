@@ -26,6 +26,25 @@ import {
 // import { connectSSE } from '../utils/sse'; // SSE 已移除，改用轮询
 import { apiUrl } from '../utils/api';
 import ReactMarkdown from 'react-markdown';
+ 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error('[TunnelRiskAgent] Caught render error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div className="text-red-300 p-2">页面渲染出现异常，已自动保护继续运行。</div>;
+    }
+    return this.props.children as any;
+  }
+}
 
 const callGemini = async (prompt: string, systemInstruction = ''): Promise<string> => {
   try {
@@ -1034,4 +1053,9 @@ const TunnelRiskAgent: React.FC = () => {
   );
 };
 
-export default TunnelRiskAgent;
+const Wrapped: React.FC = () => (
+  <ErrorBoundary>
+    <TunnelRiskAgent />
+  </ErrorBoundary>
+);
+export default Wrapped;
