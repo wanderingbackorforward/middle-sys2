@@ -277,49 +277,127 @@ const TunnelRiskAgent: React.FC = () => {
     setDecisionPlan([]);
     setAgentState('detecting');
 
-    // 初始化风险详情
+    addAgentLog(`[感知层] 正在从后端获取真实传感器数据...`, 'info');
+
+    // ========== 从后端获取真实传感器数据 ==========
     let riskDetails: any = {};
     let sensorData: any = {};
+    let detectedBy = '';
+    let location = '';
 
-    if (type === 'personnel') {
+    try {
+      if (type === 'gas') {
+        // 获取瓦斯浓度真实数据
+        const resp = await fetch(apiUrl('/api/dashboard/timeseries'));
+        const data = await resp.json();
+        const gasArr = data.gasConcentration || [];
+        const latestGas = gasArr.length > 0 ? gasArr[gasArr.length - 1] : { value: 0.1 };
+        const gasValue = latestGas.value;
+        const threshold = 0.5; // 瓦斯阈值 0.5%
+
+        sensorData = {
+          ch4: gasValue,
+          threshold,
+          trend: gasValue > threshold ? 'rising' : 'stable',
+          source: 'supabase_realtime'
+        };
+        location = '回风管路 A1段';
+        detectedBy = '多气体传感器组 G-12';
+        riskDetails = {
+          id: `RISK-${Date.now()}`,
+          type: 'gas',
+          title: gasValue > threshold ? '瓦斯浓度异常超限' : '瓦斯浓度正常监测',
+          location,
+          level: '',
+          detectedBy,
+          timestamp: new Date().toLocaleTimeString(),
+          metrics: { ch4: `${(gasValue * 100).toFixed(2)}% (阈值 ${threshold * 100}%)`, trend: sensorData.trend }
+        };
+        addAgentLog(`[数据层] 瓦斯浓度: ${(gasValue * 100).toFixed(2)}% (来源: Supabase)`, gasValue > threshold ? 'critical' : 'info');
+
+      } else if (type === 'personnel') {
+        // 获取人员统计真实数据
+        const resp = await fetch(apiUrl('/api/personnel/stats'));
+        const data = await resp.json();
+        const totalOnSite = data.totalOnSite || 0;
+        const violations = data.violations || 0;
+
+        sensorData = {
+          totalOnSite,
+          violations,
+          attendanceRate: data.attendanceRate,
+          source: 'supabase_realtime'
+        };
+        location = '管片拼装区 B2段';
+        detectedBy = 'AI视觉识别相机 #04 + 人员定位系统';
+        riskDetails = {
+          id: `RISK-${Date.now()}`,
+          type: 'personnel',
+          title: violations > 0 ? '人员违规行为检测' : '人员分布监测',
+          location,
+          level: '',
+          detectedBy,
+          timestamp: new Date().toLocaleTimeString(),
+          metrics: { 在场人数: `${totalOnSite}人`, 违规数: `${violations}`, 出勤率: data.attendanceRate }
+        };
+        addAgentLog(`[数据层] 在场人员: ${totalOnSite}人, 违规: ${violations} (来源: Supabase)`, violations > 0 ? 'warning' : 'info');
+
+      } else if (type === 'vehicle') {
+        // 获取泥浆压力作为车辆/设备监测的代理数据
+        const resp = await fetch(apiUrl('/api/dashboard/timeseries'));
+        const data = await resp.json();
+        const slurryArr = data.slurryPressure || [];
+        const latestSlurry = slurryArr.length > 0 ? slurryArr[slurryArr.length - 1] : { value: 2.0 };
+        const pressureValue = latestSlurry.value;
+        const threshold = 3.0; // 压力阈值
+
+        sensorData = {
+          pressure: pressureValue,
+          threshold,
+          status: pressureValue > threshold ? 'warning' : 'normal',
+          source: 'supabase_realtime'
+        };
+        location = '后配套物流通道';
+        detectedBy = 'UWB定位 + 压力传感器';
+        riskDetails = {
+          id: `RISK-${Date.now()}`,
+          type: 'vehicle',
+          title: pressureValue > threshold ? '设备压力异常预警' : '物流设备状态监测',
+          location,
+          level: '',
+          detectedBy,
+          timestamp: new Date().toLocaleTimeString(),
+          metrics: { 压力值: `${pressureValue.toFixed(2)} bar (阈值 ${threshold})`, 状态: sensorData.status }
+        };
+        addAgentLog(`[数据层] 设备压力: ${pressureValue.toFixed(2)} bar (来源: Supabase)`, pressureValue > threshold ? 'warning' : 'info');
+      }
+
+    } catch (error) {
+      addAgentLog(`[数据层] 获取真实数据失败，使用降级模式`, 'warning');
+      // 降级：使用默认模拟值
+      if (type === 'gas') {
+        sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising', source: 'fallback' };
+        location = '回风管路 A1段';
+        detectedBy = '多气体传感器组 G-12';
+      } else if (type === 'personnel') {
+        sensorData = { totalOnSite: 48, violations: 2, source: 'fallback' };
+        location = '管片拼装区 B2段';
+        detectedBy = 'AI视觉识别相机 #04';
+      } else {
+        sensorData = { pressure: 3.5, threshold: 3.0, source: 'fallback' };
+        location = '后配套物流通道';
+        detectedBy = 'UWB定位 + 压力传感器';
+      }
       riskDetails = {
         id: `RISK-${Date.now()}`,
-        type: 'personnel',
-        title: '人员入侵危险区域',
-        location: '管片拼装区 B2段',
+        type,
+        title: `${type === 'gas' ? '瓦斯' : type === 'personnel' ? '人员' : '设备'}风险触发`,
+        location,
         level: '',
-        detectedBy: 'AI视觉识别相机 #04',
+        detectedBy,
         timestamp: new Date().toLocaleTimeString(),
-        metrics: { distance: '0.8m (阈值 2.0m)', confidence: '98.5%' }
+        metrics: sensorData
       };
-      sensorData = { distance: 0.8, threshold: 2.0, confidence: 98.5 };
-      sensorData = { distance: 0.8, threshold: 2.0, confidence: 98.5 };
-    } else if (type === 'gas') {
-      riskDetails = {
-        id: `RISK-${Date.now()}`,
-        type: 'gas',
-        title: '瓦斯浓度异常超限',
-        location: '回风管路 A1段',
-        level: '',
-        detectedBy: '多气体传感器组 G-12',
-        timestamp: new Date().toLocaleTimeString(),
-        metrics: { ch4: '0.92% (阈值 0.5%)', trend: '极速上升' }
-      };
-      sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising' };
-      sensorData = { ch4: 0.92, threshold: 0.5, trend: 'rising' };
-    } else if (type === 'vehicle') {
-      riskDetails = {
-        id: `RISK-${Date.now()}`,
-        type: 'vehicle',
-        title: '车辆防撞预警',
-        location: '后配套物流通道',
-        level: '',
-        detectedBy: 'UWB定位 + 视觉融合',
-        timestamp: new Date().toLocaleTimeString(),
-        metrics: { speed: '15km/h', proximity: '3.5m' }
-      };
-      sensorData = { speed: 15, proximity: 3.5 };
-      sensorData = { speed: 15, proximity: 3.5 };
     }
 
     setActiveRisk(riskDetails);
