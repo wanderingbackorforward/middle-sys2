@@ -143,6 +143,26 @@ const generateSensorData = (length: number, base: number, variance: number) => {
 
 
 
+// 行内 Markdown 渲染辅助函数
+const renderInlineMarkdown = (text: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((part, j) => {
+    // 粗体 **text**
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={j} className="text-white font-bold bg-white/10 px-1 rounded mx-0.5">{part.slice(2, -2)}</strong>;
+    }
+    // 斜体 *text* (但排除单独的 *)
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return <em key={j} className="text-cyan-200 italic">{part.slice(1, -1)}</em>;
+    }
+    // 行内代码 `code`
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return <code key={j} className="bg-slate-800 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-sm">{part.slice(1, -1)}</code>;
+    }
+    return <span key={j}>{part}</span>;
+  });
+};
+
 const TunnelRiskAgent: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<'normal' | 'warning' | 'critical'>('normal');
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -633,8 +653,8 @@ const TunnelRiskAgent: React.FC = () => {
                     </div>
                   )}
                   {aiAnalysis && (
-                    <div className="h-full bg-indigo-950/20 border border-indigo-500/30 rounded p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom-5 shadow-[inset_0_0_20px_rgba(79,70,229,0.1)]">
-                      <div className="flex items-center gap-3 mb-6 border-b border-indigo-500/30 pb-3">
+                    <div className="h-full max-h-full bg-indigo-950/20 border border-indigo-500/30 rounded flex flex-col animate-in slide-in-from-bottom-5 shadow-[inset_0_0_20px_rgba(79,70,229,0.1)]">
+                      <div className="flex items-center gap-3 px-6 pt-6 pb-3 border-b border-indigo-500/30 shrink-0">
                         <div className="bg-indigo-500/20 p-2 rounded text-indigo-400">
                           <Bot size={24} />
                         </div>
@@ -642,28 +662,39 @@ const TunnelRiskAgent: React.FC = () => {
                         <span className="ml-auto text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">AI GENERATED</span>
                       </div>
 
-                      <div className="prose prose-invert prose-lg max-w-none">
-                        {/* 简单的 Markdown 渲染替代方案 */}
-                        {aiAnalysis.split('\n').map((line, i) => {
-                          if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-cyan-300 mt-4 mb-2">{line.replace('### ', '')}</h3>;
-                          if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-blue-300 mt-6 mb-3 border-l-4 border-blue-500 pl-3">{line.replace('## ', '')}</h2>;
-                          if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-white mt-6 mb-4">{line.replace('# ', '')}</h1>;
-                          if (line.startsWith('- ')) return <li key={i} className="text-slate-300 ml-4 list-disc marker:text-cyan-500 mb-1">{line.replace('- ', '')}</li>;
-                          if (line.startsWith('1. ')) return <li key={i} className="text-slate-300 ml-4 list-decimal marker:text-cyan-500 mb-1">{line.replace(/^\d+\. /, '')}</li>;
-                          if (line.trim() === '') return <br key={i} />;
-                          // 粗体渲染 **text**
-                          const parts = line.split(/(\*\*.*?\*\*)/g);
-                          return (
-                            <p key={i} className="text-base leading-relaxed text-slate-200 mb-2">
-                              {parts.map((part, j) => {
-                                if (part.startsWith('**') && part.endsWith('**')) {
-                                  return <strong key={j} className="text-white font-bold bg-white/10 px-1 rounded mx-0.5">{part.slice(2, -2)}</strong>;
-                                }
-                                return part;
-                              })}
-                            </p>
-                          );
-                        })}
+                      <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+                        <div className="prose prose-invert prose-lg max-w-none">
+                          {/* 简单的 Markdown 渲染替代方案 */}
+                          {aiAnalysis.split('\n').map((line, i) => {
+                            // 标题处理
+                            if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-cyan-300 mt-4 mb-2">{line.replace('### ', '')}</h3>;
+                            if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-blue-300 mt-6 mb-3 border-l-4 border-blue-500 pl-3">{line.replace('## ', '')}</h2>;
+                            if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-white mt-6 mb-4">{line.replace('# ', '')}</h1>;
+
+                            // 列表处理
+                            if (line.match(/^[\s]*-\s/)) {
+                              const content = line.replace(/^[\s]*-\s/, '');
+                              return <li key={i} className="text-slate-300 ml-4 list-disc marker:text-cyan-500 mb-1">{renderInlineMarkdown(content)}</li>;
+                            }
+                            if (line.match(/^[\s]*\d+\.\s/)) {
+                              const content = line.replace(/^[\s]*\d+\.\s/, '');
+                              return <li key={i} className="text-slate-300 ml-4 list-decimal marker:text-cyan-500 mb-1">{renderInlineMarkdown(content)}</li>;
+                            }
+
+                            // 分隔线
+                            if (line.trim() === '---') return <hr key={i} className="my-4 border-slate-700" />;
+
+                            // 空行
+                            if (line.trim() === '') return <br key={i} />;
+
+                            // 普通段落
+                            return (
+                              <p key={i} className="text-base leading-relaxed text-slate-200 mb-2">
+                                {renderInlineMarkdown(line)}
+                              </p>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
