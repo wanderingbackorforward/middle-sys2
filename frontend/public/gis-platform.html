@@ -183,7 +183,17 @@
         function onPointerMove(event){ pointer.x=(event.clientX/window.innerWidth)*2 - 1; pointer.y=-(event.clientY/window.innerHeight)*2 + 1; if(STATE.viewMode==='GIS') return; raycaster.setFromCamera(pointer,camera); const markerHits=raycaster.intersectObjects(markersGroup.children,true); if(markerHits.length>0){ document.body.style.cursor='pointer'; return; } const mapHits=raycaster.intersectObjects(mapGroup.children,true); let hitRegion=null; if(mapHits.length>0){ let hit=mapHits.find(obj=>obj.object.userData.isRegion); if(hit) hitRegion=hit.object; } if(hitRegion){ if(hoverReleaseTimer){ clearTimeout(hoverReleaseTimer); hoverReleaseTimer=null; } if(STATE.hoveredObj!==hitRegion){ if(STATE.hoveredObj){ STATE.hoveredObj.material=matTop; new TWEEN.Tween(STATE.hoveredObj.position).to({ z:0 },200).easing(TWEEN.Easing.Cubic.Out).start(); } STATE.hoveredObj=hitRegion; hitRegion.material=matHover; new TWEEN.Tween(hitRegion.position).to({ z:0.8 },250).easing(TWEEN.Easing.Cubic.Out).start(); ui.tooltip.style.display='block'; ui.tooltip.innerText=hitRegion.userData.name; } ui.tooltip.style.left=(event.clientX+15)+'px'; ui.tooltip.style.top=(event.clientY+15)+'px'; document.body.style.cursor='pointer'; } else { if(STATE.hoveredObj){ STATE.hoveredObj.material=matTop; new TWEEN.Tween(STATE.hoveredObj.position).to({ z:0 },200).easing(TWEEN.Easing.Cubic.Out).start(); STATE.hoveredObj=null; } if(!hoverReleaseTimer){ hoverReleaseTimer=setTimeout(()=>{ if(STATE.hoveredObj){ STATE.hoveredObj.material=matTop; new TWEEN.Tween(STATE.hoveredObj.position).to({ z:0 },150).easing(TWEEN.Easing.Cubic.Out).start(); STATE.hoveredObj=null; } hoverReleaseTimer=null; },500); } ui.tooltip.style.display='none'; document.body.style.cursor='default'; } }
         function openProjectCard(data){ STATE.selectedProject=data; updateCardContent(data); ui.card.style.display='block'; setTimeout(()=>{ document.getElementById('card-progress-bar').style.width=data.progress+'%'; },100); }
         function visitProjectWebsite(){ if(STATE.selectedProject && STATE.selectedProject.id==='p2'){ window.location.href='yangzhou-railway-command-center.html'; } else { console.log('此工程暂无外部大屏监控页面'); } }
-        window.openMonitorPlatform = function () { if (!STATE.selectedProject) return; const id = STATE.selectedProject.id; if (id === 'p2') { window.location.href = '/dashboard'; } };
+        window.openMonitorPlatform = function () {
+            if (!STATE.selectedProject) return;
+            const id = STATE.selectedProject.id;
+            if (id === 'p2') {
+                try {
+                    window.parent.postMessage({ type: 'NAVIGATE', path: '/dashboard' }, '*');
+                } catch (e) {
+                    console.log('postMessage failed', e);
+                }
+            }
+        };
         function closeIframeModal(){ ui.iframeModal.style.display='none'; const contentDiv=ui.iframeContent; Array.from(contentDiv.children).forEach(child=>{ if(child.id!=='iframe-loader'){ contentDiv.removeChild(child); } }); }
         function closeProjectCard(){ ui.card.style.display='none'; document.getElementById('card-progress-bar').style.width='0%'; }
         function goBack(){ if(STATE.viewMode==='GIS'){ exitGISMode(); return; } if(STATE.history.length>0){ const prev=STATE.history.pop(); loadMapData(prev.adcode, '区域'); } }

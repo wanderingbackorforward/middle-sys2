@@ -17,6 +17,7 @@ from langgraph.prebuilt import ToolNode
 
 from .tools import get_tools
 from .rag import KnowledgeBase
+from .memory import get_memory
 
 
 # ============== 状态定义 ==============
@@ -33,6 +34,10 @@ class AgentState(TypedDict):
     analysis_result: str              # 分析结果
     retrieved_docs: list              # RAG 检索到的文档
     reasoning_steps: list             # 推理步骤记录
+    
+    # 记忆相关
+    similar_episodes: list            # 历史相似案例
+    episode_id: str                   # 当前事件ID
     
     # 输出
     decision_plan: list               # 决策方案
@@ -60,7 +65,18 @@ def perceive_node(state: AgentState) -> AgentState:
         "message": f"[数据层] 聚合传感器数据: {json.dumps(sensor_info, ensure_ascii=False)}"
     })
     
-    return {**state, "reasoning_steps": steps}
+    # 检索历史相似案例
+    memory = get_memory()
+    similar = memory.find_similar_episodes(state['risk_type'], state.get('location'), limit=2)
+    
+    if similar:
+        steps.append({
+            "node": "perceive",
+            "time": datetime.now().isoformat(),
+            "message": f"[记忆库] 检索到 {len(similar)} 条历史相似案例"
+        })
+    
+    return {**state, "reasoning_steps": steps, "similar_episodes": similar}
 
 
 def analyze_node(state: AgentState) -> AgentState:
@@ -178,6 +194,14 @@ def plan_node(state: AgentState) -> AgentState:
     # 构建规划 prompt
     docs_text = "\n".join([d["content"] for d in state.get("retrieved_docs", [])])
     
+    # 添加历史案例参考
+    similar_text = ""
+    for ep in state.get("similar_episodes", []):
+        if ep.get("decision_plan"):
+            plan_str = ep.get("decision_plan") if isinstance(ep.get("decision_plan"), str) else json.dumps(ep.get("decision_plan"), ensure_ascii=False)
+            score = ep.get("effectiveness_score", "未评价")
+            similar_text += f"\n历史案例 (有效性评分:{score}): {plan_str}"
+    
     prompt = f"""作为盾构隧道安全管控智能体，根据以下信息生成处置方案：
 
 风险类型: {state['risk_type']}
@@ -187,6 +211,9 @@ def plan_node(state: AgentState) -> AgentState:
 
 参考规范:
 {docs_text}
+
+历史相似案例处置方案（供参考）:
+{similar_text or '无历史案例'}
 
 请生成 3-5 条具体的管控措施，按优先级排序。
 返回 JSON 数组格式: [{{"step": 1, "action": "...", "auto": true/false, "reason": "..."}}]
@@ -333,7 +360,24 @@ class TunnelRiskGraph:
         return result
 
 
-def run_agent(risk_type: str, sensor_data: dict = None, location: str = "") -> dict:
-    """便捷函数：运行智能体"""
+def run_agent(risk_type: str, sensor_data: dict = None, location: str = "", auto_triggered: bool = False) -> dict:
+    """便捷函数：运行智能体并保存记忆"""
     agent = TunnelRiskGraph()
-    return agent.run(risk_type, sensor_data, location)
+    result = agent.run(risk_type, sensor_data, location)
+    
+    # 保存到记忆库
+    memory = get_memory()
+    episode_id = memory.save_episode({
+        "risk_type": risk_type,
+        "risk_level": result.get("risk_level"),
+        "location": location,
+        "sensor_data": sensor_data,
+        "analysis_result": result.get("analysis_result"),
+        "decision_plan": result.get("decision_plan", []),
+        "retrieved_docs": result.get("retrieved_docs", []),
+        "reasoning_steps": result.get("reasoning_steps", []),
+        "auto_triggered": auto_triggered
+    })
+    
+    result["episode_id"] = episode_id
+    return result

@@ -20,15 +20,15 @@ WORKDIR /app
 COPY --from=builder /app/target/tunnel-monitor-*.jar app.jar
 
 # 设置环境变量
-ENV SPRING_PROFILES_ACTIVE=prod \\
-    SERVER_PORT=8080 \\
+ENV SPRING_PROFILES_ACTIVE=prod \
+    SERVER_PORT=8080 \
     JAVA_OPTS="-Xmx512M -Xms256M"
 
 # 暴露端口
 EXPOSE 8080
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \\
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/api/actuator/health || exit 1
 
 # 启动应用
