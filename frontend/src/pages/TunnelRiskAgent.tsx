@@ -645,17 +645,17 @@ const TunnelRiskAgent: React.FC = () => {
                       <div className="flex-1 overflow-y-scroll px-6 py-4" style={{ maxHeight: 'calc(100vh - 350px)' }}>
                         <ReactMarkdown
                           components={{
-                            h1: ({ children }) => <h1 className="text-2xl font-black text-white mt-4 mb-3 border-b border-slate-700 pb-2">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-xl font-bold text-blue-300 mt-5 mb-2 border-l-4 border-blue-500 pl-3">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-lg font-bold text-cyan-300 mt-4 mb-2">{children}</h3>,
-                            p: ({ children }) => <p className="text-base leading-relaxed text-slate-200 mb-3">{children}</p>,
-                            strong: ({ children }) => <strong className="text-white font-bold bg-white/10 px-1 rounded">{children}</strong>,
-                            em: ({ children }) => <em className="text-cyan-200 italic">{children}</em>,
-                            ul: ({ children }) => <ul className="list-disc list-inside text-slate-300 mb-3 ml-2 space-y-1">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal list-inside text-slate-300 mb-3 ml-2 space-y-1">{children}</ol>,
-                            li: ({ children }) => <li className="text-slate-300">{children}</li>,
+                            h1: ({ children }: { children?: React.ReactNode }) => <h1 className="text-2xl font-black text-white mt-4 mb-3 border-b border-slate-700 pb-2">{children}</h1>,
+                            h2: ({ children }: { children?: React.ReactNode }) => <h2 className="text-xl font-bold text-blue-300 mt-5 mb-2 border-l-4 border-blue-500 pl-3">{children}</h2>,
+                            h3: ({ children }: { children?: React.ReactNode }) => <h3 className="text-lg font-bold text-cyan-300 mt-4 mb-2">{children}</h3>,
+                            p: ({ children }: { children?: React.ReactNode }) => <p className="text-base leading-relaxed text-slate-200 mb-3">{children}</p>,
+                            strong: ({ children }: { children?: React.ReactNode }) => <strong className="text-white font-bold bg-white/10 px-1 rounded">{children}</strong>,
+                            em: ({ children }: { children?: React.ReactNode }) => <em className="text-cyan-200 italic">{children}</em>,
+                            ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc list-inside text-slate-300 mb-3 ml-2 space-y-1">{children}</ul>,
+                            ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal list-inside text-slate-300 mb-3 ml-2 space-y-1">{children}</ol>,
+                            li: ({ children }: { children?: React.ReactNode }) => <li className="text-slate-300">{children}</li>,
                             hr: () => <hr className="my-4 border-slate-700" />,
-                            code: ({ children }) => <code className="bg-slate-800 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-sm">{children}</code>,
+                            code: ({ children }: { children?: React.ReactNode }) => <code className="bg-slate-800 text-cyan-300 px-1.5 py-0.5 rounded font-mono text-sm">{children}</code>,
                           }}
                         >
                           {aiAnalysis}
