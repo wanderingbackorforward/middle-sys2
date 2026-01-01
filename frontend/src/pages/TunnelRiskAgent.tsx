@@ -213,22 +213,22 @@ const TunnelRiskAgent: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 自动监测：当轮询发现数据超阈值时自动触发风险处理
+  const autoTriggerRef = useRef(false); // 防止重复触发
   useEffect(() => {
-    const interval = setInterval(() => {
-      setGasData(prev => {
-        const newVal = activeRisk?.type === 'gas' ? 0.8 + Math.random() * 0.2 : 0.05 + Math.random() * 0.02;
-        return [
-          ...prev.slice(1),
-          { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: newVal, threshold: 0.5 }
-        ];
-      });
-      setPressureData(prev => [
-        ...prev.slice(1),
-        { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: 2.5 + Math.random() * 0.3, threshold: 3.5 }
-      ]);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [activeRisk]);
+    // 检查最新的瓦斯数据是否超阈值
+    const latestGas = gasData[gasData.length - 1];
+    if (latestGas && latestGas.value > 0.5 && !autoTriggerRef.current && agentState === 'idle') {
+      autoTriggerRef.current = true;
+      console.log('[AutoMonitor] 检测到瓦斯超标，自动触发风险处理', latestGas.value);
+      triggerRiskScenario('gas');
+    }
+    // 重置触发状态（当数据恢复正常时）
+    if (latestGas && latestGas.value <= 0.5 && autoTriggerRef.current) {
+      setTimeout(() => { autoTriggerRef.current = false; }, 30000); // 30秒后允许再次触发
+    }
+  }, [gasData, agentState]);
 
   const addAgentLog = (message: string, type: 'info' | 'warning' | 'critical' | 'success' = 'info') => {
     setAgentLogs(prev => [...prev, { id: Date.now(), message, type }]);
