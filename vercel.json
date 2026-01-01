@@ -4,24 +4,11 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": { "distDir": "dist" }
-    },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": { "includeFiles": ["backend-flask/**"] }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.py" },
     { "src": "/assets/(.*)", "dest": "/frontend/assets/$1" },
     { "src": "/(.*)\\.(.*)", "dest": "/frontend/$1.$2" },
     { "src": "/(.*)", "dest": "/frontend/index.html" }
-  ],
-  "env": {
-    "SUPABASE_URL": "https://komlrqbghyirkykmibrx.supabase.co",
-    "SUPABASE_SERVICE_KEY": "sb_publishable_dN2XxFgARaq_7RhBo-3E4w_cEOzwz56",
-    "USE_SUPABASE": "1",
-    "DEEPSEEK_API_KEY": "sk-cfe8ad4a88ff4604b95c4ea657f19ecc",
-    "VITE_PUBLIC_DEEPSEEK_KEY": ""
-  }
+  ]
 }
