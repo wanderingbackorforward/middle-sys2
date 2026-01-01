@@ -23,7 +23,7 @@ import {
   Line,
   ResponsiveContainer
 } from 'recharts';
-import { connectSSE } from '../utils/sse';
+// import { connectSSE } from '../utils/sse'; // SSE 已移除，改用轮询
 import { apiUrl } from '../utils/api';
 import ReactMarkdown from 'react-markdown';
 
@@ -173,81 +173,45 @@ const TunnelRiskAgent: React.FC = () => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [agentLogs]);
 
+  // 轮询机制替代 SSE
   useEffect(() => {
-    const disconnectRisk = connectSSE(apiUrl('/api/stream/tunnel-risk'), {
-      risk: (payload: any) => {
-        const t = payload?.type as 'personnel' | 'gas' | 'vehicle' | undefined;
-        if (t) triggerRiskScenario(t);
-      }
-    });
+    const pollInterval = 5000; // 5秒轮询一次
 
-    // 监听智能体自主监控频道
-    const disconnectAgent = connectSSE(apiUrl('/api/stream/agent'), {
-      'agent-status': (payload: any) => {
-        console.log('[SSE] agent-status recv:', payload);
+    const fetchData = async () => {
+      try {
+        // 1. 获取传感器时序数据
+        const tsResp = await fetch(apiUrl('/api/dashboard/timeseries'));
+        if (tsResp.ok) {
+          const data = await tsResp.json();
+          const latestGas = data.gasConcentration?.[data.gasConcentration.length - 1];
+          const latestPressure = data.slurryPressure?.[data.slurryPressure.length - 1];
 
-        // 自动触发处理
-        if (payload.auto_triggered && payload.state === 'completed') {
-          const result = payload.result || {};
-          const riskType = payload.risk_type;
-
-          // 构造风险详情对象
-          const newRisk = {
-            id: `AUTO-${Date.now()}`,
-            type: riskType,
-            title: riskType === 'gas' ? '瓦斯浓度异常 (自动监测)' :
-              riskType === 'personnel' ? '人员入侵告警 (自动监测)' : '车辆违规预警 (自动监测)',
-            location: '监测区域 (AI识别)',
-            level: payload.risk_level || '判定中',
-            detectedBy: '智能体自主监控系统',
-            timestamp: new Date().toLocaleTimeString(),
-            metrics: { info: '后台自动触发' }
-          };
-
-          setActiveRisk(newRisk);
-          setSystemStatus('critical');
-
-          if (result.analysis) setAiAnalysis(result.analysis);
-
-          // 解析决策方案
-          const plan = result.decision_plan || [];
-          setDecisionPlan(plan.map((p: any, idx: number) => ({
-            step: p.step || idx + 1,
-            action: p.action || '',
-            auto: p.auto !== false,
-            reason: p.reason || ''
-          })));
-
-          setAgentState('executing');
-          addAgentLog(`[自主监控] 检测到风险，智能体已自动介入`, 'critical');
-          addAgentLog(`[报告] ${newRisk.title} - 处置方案已生成`, 'success');
+          if (latestGas) {
+            setGasData(prev => [
+              ...prev.slice(1),
+              { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: latestGas.value, threshold: 0.5 }
+            ]);
+          }
+          if (latestPressure) {
+            setPressureData(prev => [
+              ...prev.slice(1),
+              { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: latestPressure.value, threshold: 3.5 }
+            ]);
+          }
         }
-      }
-    });
 
-    const disconnectSensors = connectSSE(apiUrl('/api/stream/sensors'), {
-      sensor: (payload: any) => {
-        const g = Number(payload?.gas);
-        const p = Number(payload?.pressure);
-        if (!Number.isNaN(g)) {
-          setGasData(prev => [
-            ...prev.slice(1),
-            { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: g, threshold: 0.5 }
-          ]);
-        }
-        if (!Number.isNaN(p)) {
-          setPressureData(prev => [
-            ...prev.slice(1),
-            { time: new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }), value: p, threshold: 3.5 }
-          ]);
-        }
+        // 2. 检查智能体自动触发状态
+        // 这里模拟检查，实际上后端应该有一个 /api/agent/latest 接口
+        // 暂时略过自动触发的轮询，以免冲突，依赖手动触发即可
+      } catch (e) {
+        console.error('[Poll] fetch error', e);
       }
-    });
-    return () => {
-      disconnectRisk();
-      disconnectAgent();
-      disconnectSensors();
     };
+
+    const timer = setInterval(fetchData, pollInterval);
+    fetchData(); // 立即执行一次
+
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     const interval = setInterval(() => {
